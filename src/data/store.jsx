@@ -1,154 +1,186 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react'
-import { freshState } from './seed.js'
+import { SCHOOL } from './seed.js'
 import {
   loadStudents,
   persistObservation,
+  updateObservationRow,
+  deleteObservationRow,
   persistFrequency,
-  seedIfEmpty,
+  persistStudent,
 } from './supabase.js'
-import { SEED_STUDENTS } from './seed.js'
+import { useAuth } from './auth.jsx'
 
-const KEY = 'kidchemy.v1'
 const StoreContext = createContext(null)
 
-// ─── localStorage helpers (kept as offline fallback) ─────────
-function lsLoad() {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return freshState()
-    const parsed = JSON.parse(raw)
-    if (!parsed?.students?.length) return freshState()
-    return parsed
-  } catch {
-    return freshState()
-  }
-}
+const newObsId = () =>
+  `obs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
 
-function lsSave(state) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state))
-  } catch {
-    /* private mode / quota */
-  }
-}
-
-// ─── Provider ────────────────────────────────────────────────
 export function StoreProvider({ children }) {
-  const [state, setState] = useState(lsLoad)
-  const [loading, setLoading] = useState(true)
+  const { session, profile, ready } = useAuth()
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [lastSync, setLastSync] = useState(null)
 
-  // On mount: seed Supabase if empty, then load from Supabase.
+  const refresh = useCallback(async () => {
+    if (!session) {
+      setStudents([])
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const next = await loadStudents()
+      setStudents(next)
+      setLastSync(new Date())
+    } catch (err) {
+      console.warn('Could not load from Supabase', err)
+      setError(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [session])
+
+  // Load once we know who is signed in. Signing out clears everything so
+  // one account's class never leaks into the next session on a shared laptop.
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        await seedIfEmpty(SEED_STUDENTS)
-        const students = await loadStudents()
-        if (!cancelled) {
-          setState((prev) => ({ ...prev, students }))
-        }
-      } catch (err) {
-        console.warn('Supabase unavailable — using localStorage', err)
-        setError(err)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [])
+    if (!ready) return
+    if (!session) {
+      setStudents([])
+      setError(null)
+      return
+    }
+    refresh()
+  }, [ready, session, profile?.role, refresh])
 
-  // Keep localStorage in sync as a fallback.
-  useEffect(() => {
-    if (!loading) lsSave(state)
-  }, [state, loading])
-
-  const api = useMemo(
+  const school = useMemo(
     () => ({
-      ...state,
+      name: profile?.school || students[0]?.school || SCHOOL.name,
+      city: SCHOOL.city,
+      className: profile?.class_name || students[0]?.className || SCHOOL.className,
+      teacher: profile?.full_name || SCHOOL.teacher,
+    }),
+    [profile, students]
+  )
+
+  const api = useMemo(() => {
+    const upsertLocal = (studentId, obs) =>
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id !== studentId) return s
+          const exists = s.observations.some((o) => o.id === obs.id)
+          const observations = exists
+            ? s.observations.map((o) => (o.id === obs.id ? obs : o))
+            : [...s.observations, obs]
+          observations.sort((a, b) => String(a.date).localeCompare(String(b.date)))
+          return { ...s, observations }
+        })
+      )
+
+    return {
+      students,
+      school,
       loading,
       error,
+      lastSync,
+      refresh,
 
-      getStudent: (id) => state.students.find((s) => s.id === id),
+      getStudent: (id) => students.find((s) => s.id === id),
 
-      /**
-       * Add one observation for a single student.
-       * Optimistic local update → Supabase persist in background.
-       */
-      addObservation: (studentId, observation) => {
-        const newObs = {
+      addObservation: async (studentId, observation) => {
+        const obs = {
           ...observation,
-          id: observation.id ?? `obs_${Date.now()}`,
+          id: observation.id ?? newObsId(),
           visibility: observation.visibility ?? 'shared',
+          tagNotes: observation.tagNotes ?? {},
         }
-
-        // Optimistic update
-        setState((prev) => ({
-          ...prev,
-          students: prev.students.map((s) =>
-            s.id === studentId
-              ? { ...s, observations: [...s.observations, newObs] }
-              : s
-          ),
-        }))
-
-        // Background persist
-        persistObservation(studentId, newObs).catch((err) =>
-          console.warn('Failed to persist observation', err)
-        )
+        upsertLocal(studentId, obs)
+        try {
+          await persistObservation(studentId, obs)
+        } catch (err) {
+          console.warn('Failed to save observation', err)
+          setError(err)
+          throw err
+        }
       },
 
-      /**
-       * Add observations for multiple students at once (class-sweep).
-       * Each entry: { studentId, tags, period, date, teacher, note?, milestone?, visibility? }
-       */
-      addBatchObservations: (entries) => {
+      updateObservation: async (studentId, observation) => {
+        upsertLocal(studentId, observation)
+        try {
+          await updateObservationRow(studentId, observation)
+        } catch (err) {
+          console.warn('Failed to update observation', err)
+          setError(err)
+          throw err
+        }
+      },
+
+      deleteObservation: async (studentId, observationId) => {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === studentId
+              ? { ...s, observations: s.observations.filter((o) => o.id !== observationId) }
+              : s
+          )
+        )
+        try {
+          await deleteObservationRow(observationId)
+        } catch (err) {
+          console.warn('Failed to delete observation', err)
+          setError(err)
+          throw err
+        }
+      },
+
+      /** Class sweep: one tag, many children, one round trip each. */
+      addBatchObservations: async (entries) => {
         const dated = entries.map((e) => ({
           ...e,
-          id: `obs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          id: newObsId(),
           visibility: e.visibility ?? 'shared',
+          tagNotes: e.tagNotes ?? {},
         }))
-
-        setState((prev) => ({
-          ...prev,
-          students: prev.students.map((s) => {
-            const mine = dated.filter((e) => e.studentId === s.id)
-            if (!mine.length) return s
-            const newObs = mine.map(({ studentId, ...obs }) => obs)
-            return { ...s, observations: [...s.observations, ...newObs] }
-          }),
-        }))
-
-        // Background persist (fire-and-forget per observation)
-        dated.forEach(({ studentId, ...obs }) => {
-          persistObservation(studentId, obs).catch((err) =>
-            console.warn('Failed to persist sweep observation', err)
+        dated.forEach(({ studentId, ...obs }) => upsertLocal(studentId, obs))
+        await Promise.all(
+          dated.map(({ studentId, ...obs }) =>
+            persistObservation(studentId, obs).catch((err) => {
+              console.warn('Failed to save sweep observation', err)
+              setError(err)
+            })
           )
-        })
-      },
-
-      setFrequency: (studentId, frequency) => {
-        setState((prev) => ({
-          ...prev,
-          students: prev.students.map((s) =>
-            s.id === studentId ? { ...s, frequency } : s
-          ),
-        }))
-        persistFrequency(studentId, frequency).catch((err) =>
-          console.warn('Failed to persist frequency', err)
         )
       },
 
-      reset: () => setState(freshState()),
-    }),
-    [state, loading, error]
-  )
+      setFrequency: async (studentId, frequency) => {
+        setStudents((prev) =>
+          prev.map((s) => (s.id === studentId ? { ...s, frequency } : s))
+        )
+        persistFrequency(studentId, frequency).catch((err) =>
+          console.warn('Failed to save frequency', err)
+        )
+      },
+
+      addStudent: async (student) => {
+        const row = {
+          ...student,
+          className: student.className || school.className,
+          school: student.school || school.name,
+          observations: [],
+        }
+        setStudents((prev) =>
+          [...prev, row].sort((a, b) => a.name.localeCompare(b.name))
+        )
+        await persistStudent(row)
+      },
+    }
+  }, [students, school, loading, error, lastSync, refresh])
 
   return <StoreContext.Provider value={api}>{children}</StoreContext.Provider>
 }

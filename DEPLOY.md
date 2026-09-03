@@ -167,3 +167,59 @@ school, and a server-side filter for `shared` vs `school`.
 | Preview a risky change | `git checkout -b name` then push |
 | Roll back | Vercel → Deployments → Promote to Production |
 | Change the schema | Supabase dashboard SQL editor, then update `schema.sql` |
+
+---
+
+## v2 — auth, roles and RLS
+
+v2 adds real accounts. Two things must happen in Supabase before the new build
+works, and they are both one-time.
+
+### 1. Run the new schema
+
+Open the Supabase SQL editor and run the whole of `supabase/schema.sql`. It is
+idempotent — safe to run on the existing project. It will:
+
+- add `profiles`, `teacher_codes` and `parent_links`
+- add `students.access_code` and `observations.tag_notes`
+- install a trigger on `auth.users` that creates the profile at signup
+- **drop the v1 "anon full access" policies** and replace them with real ones
+- trim the pilot class to Aryan and Priya
+
+After it runs, an unauthenticated visitor can read nothing. That is the point.
+If the app suddenly shows an empty class, check that you are signed in — an
+empty result is what a correct policy looks like to the wrong user.
+
+### 2. Decide about email confirmation
+
+Supabase → Authentication → Providers → Email.
+
+- **Confirm email ON** (the default): signup sends a link, and the person must
+  click it before they can sign in. The login page already tells them this.
+  Set the Site URL and Redirect URLs to your Vercel domain or the link will
+  point at `localhost`.
+- **Confirm email OFF**: signup logs the person straight in. Much better for a
+  pilot demo where you are creating accounts in front of a headteacher.
+
+### 3. Codes
+
+- Teacher signup requires a code from `teacher_codes`. The pilot row is
+  `VIDYA-6A`. Add a row per school or per class as you onboard them:
+  ```sql
+  insert into teacher_codes (code, school, class_name)
+  values ('STMARY-7B', "St Mary's High School", 'Class 7B');
+  ```
+- Parent signup takes the child's `students.access_code`. The pilot codes are
+  `ARYAN-4821` and `PRIYA-7136`, and both are printed on the sticker sheet at
+  `/teacher/stickers`. Anyone holding a code can claim that child, so treat the
+  sticker sheet as confidential until it is glued to the right report card.
+
+### 4. Smoke test after deploying
+
+1. Sign out. Visit `/teacher` — you should land on `/login`.
+2. Create a teacher account with `VIDYA-6A`. You should see both children.
+3. Log an observation with a remark under a tag. Check it appears in the child's
+   timeline and in the remark ledger on `/teacher/analytics`.
+4. Mark an observation "school only". Sign out.
+5. Create a parent account with `ARYAN-4821`. You should see Aryan and only
+   Aryan, and the school-only entry should be absent from the profile.

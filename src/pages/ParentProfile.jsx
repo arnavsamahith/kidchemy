@@ -1,12 +1,17 @@
 import { Link, useParams } from 'react-router-dom'
 import {
+  ArrowLeft,
   Compass,
   Heart,
+  LogOut,
   MessageCircleQuestion,
+  MessageSquareQuote,
   Sparkles,
   Sprout,
   TrendingUp,
 } from 'lucide-react'
+import { useAuth } from '../data/auth.jsx'
+import { tagRemarks } from '../data/analytics.js'
 import { useStore } from '../data/store.jsx'
 import {
   buildNarrative,
@@ -42,18 +47,52 @@ function Section({ title, icon: Icon, children, delay = 0 }) {
   )
 }
 
+function TopBar({ isTeacher, signOut }) {
+  return (
+    <div className="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur print:hidden">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
+        <Link
+          to={isTeacher ? '/teacher' : '/parent'}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition hover:text-ink"
+        >
+          <ArrowLeft size={15} />
+          {isTeacher ? 'Teacher workspace' : 'My children'}
+        </Link>
+        <button
+          type="button"
+          onClick={signOut}
+          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-ink-faint hover:text-ink"
+        >
+          <LogOut size={13} /> Sign out
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ParentProfile() {
   const { studentId } = useParams()
-  const { getStudent, school } = useStore()
+  const { getStudent, school, loading } = useStore()
+  const { isTeacher, signOut } = useAuth()
   const student = getStudent(studentId)
 
   if (!student) {
     return (
-      <div className="mx-auto max-w-xl px-6 py-24 text-center">
-        <p className="text-ink-soft">We couldn't find that profile.</p>
-        <Link to="/" className="mt-4 inline-block text-moss underline">
-          Go home
-        </Link>
+      <div className="min-h-dvh bg-paper">
+        <TopBar isTeacher={isTeacher} signOut={signOut} />
+        <div className="mx-auto max-w-xl px-6 py-24 text-center">
+          <p className="text-ink-soft">
+            {loading
+              ? 'Opening the profile…'
+              : "We couldn't find that profile, or it isn't one you have access to."}
+          </p>
+          <Link
+            to={isTeacher ? '/teacher' : '/parent'}
+            className="mt-4 inline-block text-moss underline underline-offset-4"
+          >
+            Go back
+          </Link>
+        </div>
       </div>
     )
   }
@@ -75,12 +114,15 @@ export default function ParentProfile() {
   const actions = parentActions(obs)
   const questions = conversationStarters(obs)
   const milestones = milestonesOf(obs).slice(0, 3)
+  const remarks = tagRemarks(obs).slice(0, 8)
 
   // Thin-profile state: fewer than 2 shared observations.
   const isThin = obs.length < 2
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-5 pb-28 pt-6 sm:px-8">
+    <div className="min-h-dvh bg-paper">
+      <TopBar isTeacher={isTeacher} signOut={signOut} />
+      <article className="mx-auto w-full max-w-3xl px-5 pb-28 pt-6 sm:px-8">
       {/* Hero */}
       <header className="kc-rise relative overflow-hidden rounded-3xl border border-line bg-white/70 px-6 py-10 sm:px-10 sm:py-14">
         <Sprig className="pointer-events-none absolute -right-4 -top-6 h-56 w-40 text-moss" />
@@ -281,6 +323,38 @@ export default function ParentProfile() {
         </Section>
       )}
 
+      {/* The teacher's own words, tag by tag. */}
+      {remarks.length > 0 && (
+        <Section
+          title="In your teacher's words"
+          icon={MessageSquareQuote}
+          delay={340}
+        >
+          <p className="mb-5 max-w-xl text-[15px] leading-relaxed text-ink-soft">
+            Each of these was written next to a specific thing a teacher
+            noticed. Nothing here was generated.
+          </p>
+          <ul className="grid gap-3">
+            {remarks.map((r, i) => (
+              <li
+                key={`${r.observationId}-${r.tagId}-${i}`}
+                className="rounded-2xl border border-line bg-white/70 p-5"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-clay">
+                  {r.tagLabel}
+                </p>
+                <p className="mt-2 text-[15px] leading-relaxed text-ink">
+                  “{r.text}”
+                </p>
+                <p className="mt-3 text-xs text-ink-faint">
+                  {r.teacher} · {r.period}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
       <footer className="mt-16 border-t border-line pt-6 text-sm text-ink-faint">
         <p>
           Written by {first}'s teachers at {school.name}. Kidchemy does not
@@ -288,12 +362,13 @@ export default function ParentProfile() {
           school and the family.
         </p>
         <Link
-          to="/teacher"
+          to={isTeacher ? '/teacher' : '/parent'}
           className="mt-3 inline-block text-moss underline underline-offset-4"
         >
-          Teacher view (demo)
+          {isTeacher ? 'Back to the teacher workspace' : 'Back to my children'}
         </Link>
       </footer>
-    </article>
+      </article>
+    </div>
   )
 }

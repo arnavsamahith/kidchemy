@@ -1,201 +1,184 @@
 /**
- * ClassSweep — the fast whole-class logging flow.
+ * ClassSweep — the fast whole-class flow.
  *
- * Instead of "tell me about Aryan", we ask:
- *   "Who did this today?"  [Aryan] [Priya] [Rohan] …
- *
- * Seven prompts, a few taps each — whole class logged in < 2 min.
- * Same data model as the per-child form, one-tenth the effort.
+ * Instead of "tell me about Aryan", it asks "who did this today?" and lets
+ * the teacher tap names under each behaviour. A remark can still be attached
+ * to any one child under any one tag, without leaving the flow.
  */
 
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, Sparkles, Zap } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ArrowLeft,
+  Check,
+  MessageSquarePlus,
+  Sparkles,
+  Zap,
+} from 'lucide-react'
+import AppShell from '../components/AppShell.jsx'
 import { useStore } from '../data/store.jsx'
-import { TAG_GROUPS, MILESTONES, PERIODS } from '../data/taxonomy.js'
+import { TAG_GROUPS, PERIODS } from '../data/taxonomy.js'
 import Chip from '../components/Chip.jsx'
 
-// Pick a curated subset of tags for the sweep — fast, high-signal.
-const SWEEP_GROUPS = TAG_GROUPS.map((g) => ({
-  ...g,
-  tags: g.tags.filter((t) => !t.style || t.id === 'needs-time'), // keep style tags too
-}))
+const SWEEP_GROUPS = TAG_GROUPS
+const ALL_SWEEP_TAGS = SWEEP_GROUPS.flatMap((g) => g.tags)
+const MAX_TAG_NOTE = 160
+
+const emptySelections = () =>
+  Object.fromEntries(ALL_SWEEP_TAGS.map((t) => [t.id, new Set()]))
+
+const key = (tagId, studentId) => `${tagId}|${studentId}`
 
 export default function ClassSweep() {
-  const navigate = useNavigate()
   const { students, school, addBatchObservations } = useStore()
 
   const [period, setPeriod] = useState(PERIODS[PERIODS.length - 1])
-  const [step, setStep] = useState('setup') // 'setup' | 'sweep' | 'done'
+  const [step, setStep] = useState('sweep') // 'sweep' | 'done'
+  const [selections, setSelections] = useState(emptySelections)
+  const [remarks, setRemarks] = useState({})
+  const [openRemark, setOpenRemark] = useState(null)
+  const [saving, setSaving] = useState(false)
 
-  // { tagId: Set<studentId> }
-  const [selections, setSelections] = useState(() =>
-    Object.fromEntries(
-      SWEEP_GROUPS.flatMap((g) => g.tags).map((t) => [t.id, new Set()])
-    )
-  )
-
-  const toggleStudent = (tagId, studentId) => {
+  const toggleStudent = (tagId, studentId) =>
     setSelections((prev) => {
       const next = new Set(prev[tagId])
-      if (next.has(studentId)) next.delete(studentId)
-      else next.add(studentId)
+      if (next.has(studentId)) {
+        next.delete(studentId)
+        setOpenRemark((r) => (r === key(tagId, studentId) ? null : r))
+      } else {
+        next.add(studentId)
+      }
       return { ...prev, [tagId]: next }
     })
-  }
 
-  const totalTags = Object.values(selections).reduce(
-    (sum, s) => sum + s.size,
-    0
+  const totalTags = useMemo(
+    () => Object.values(selections).reduce((sum, s) => sum + s.size, 0),
+    [selections]
   )
+  const touched = useMemo(() => {
+    const set = new Set()
+    Object.values(selections).forEach((s) => s.forEach((id) => set.add(id)))
+    return set
+  }, [selections])
 
-  const submit = () => {
-    // Build one observation entry per student that has ≥1 tag.
+  const remarkCount = Object.values(remarks).filter((t) => t?.trim()).length
+
+  const submit = async () => {
     const byStudent = {}
-    Object.entries(selections).forEach(([tagId, studentIds]) => {
-      studentIds.forEach((sid) => {
-        if (!byStudent[sid]) byStudent[sid] = []
-        byStudent[sid].push(tagId)
+    Object.entries(selections).forEach(([tagId, ids]) =>
+      ids.forEach((sid) => {
+        if (!byStudent[sid]) byStudent[sid] = { tags: [], tagNotes: {} }
+        byStudent[sid].tags.push(tagId)
+        const r = remarks[key(tagId, sid)]
+        if (r?.trim()) byStudent[sid].tagNotes[tagId] = r.trim()
       })
-    })
+    )
 
-    const entries = Object.entries(byStudent).map(([studentId, tags]) => ({
+    const entries = Object.entries(byStudent).map(([studentId, v]) => ({
       studentId,
       period,
       date: new Date().toISOString().slice(0, 10),
       teacher: school.teacher,
-      tags,
+      tags: v.tags,
+      tagNotes: v.tagNotes,
       note: '',
       milestone: null,
       visibility: 'shared',
       subjects: [],
     }))
 
-    if (entries.length) addBatchObservations(entries)
-    setStep('done')
+    if (!entries.length) return
+    setSaving(true)
+    try {
+      await addBatchObservations(entries)
+      setStep('done')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (step === 'done') {
-    const logged = Object.values(selections).reduce((acc, s) => {
-      s.forEach((sid) => acc.add(sid))
-      return acc
-    }, new Set()).size
-
     return (
-      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-moss-tint text-moss-dark">
-          <Check size={30} />
-        </div>
-        <h2 className="mt-6 font-display text-2xl text-ink">
-          {logged} {logged === 1 ? 'child' : 'children'} logged
-        </h2>
-        <p className="mt-2 text-ink-soft">
-          Profiles updated. Parents will see the changes the next time they
-          scan.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            to="/teacher"
-            className="rounded-full border border-line px-5 py-2.5 text-sm font-medium text-ink-soft hover:border-ink-faint hover:text-ink"
-          >
-            Back to class
-          </Link>
-          <button
-            onClick={() => {
-              setSelections(
-                Object.fromEntries(
-                  SWEEP_GROUPS.flatMap((g) => g.tags).map((t) => [t.id, new Set()])
-                )
-              )
-              setStep('setup')
-            }}
-            className="rounded-full bg-moss px-5 py-2.5 text-sm font-semibold text-white hover:bg-moss-dark"
-          >
-            Log another sweep
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (step === 'setup') {
-    return (
-      <div className="mx-auto w-full max-w-2xl px-5 pb-24 pt-6 sm:px-8">
-        <Link
-          to="/teacher"
-          className="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-ink"
-        >
-          <ArrowLeft size={15} /> {school.className}
-        </Link>
-
-        <header className="mt-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-clay-tint px-3 py-1 text-xs font-semibold uppercase tracking-wider text-clay">
-            <Zap size={12} /> Class sweep
+      <AppShell title="Sweep saved">
+        <div className="mx-auto flex max-w-md flex-col items-center py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-moss-tint text-moss-dark">
+            <Check size={30} />
           </div>
-          <h1 className="mt-3 font-display text-3xl text-ink sm:text-4xl">
-            Who did this today?
-          </h1>
-          <p className="mt-2 text-ink-soft">
-            For each behaviour below, tap the children it describes this week.
-            Whole class logged in under two minutes.
-          </p>
-        </header>
-
-        <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-faint">
-            Term
+          <h2 className="mt-6 font-display text-2xl text-ink">
+            {touched.size} {touched.size === 1 ? 'child' : 'children'} logged
           </h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {PERIODS.map((p) => (
-              <Chip key={p} selected={period === p} onClick={() => setPeriod(p)}>
-                {p}
-              </Chip>
-            ))}
+          <p className="mt-2 text-ink-soft">
+            {totalTags} tags and {remarkCount} remark
+            {remarkCount === 1 ? '' : 's'} recorded. Profiles have been rebuilt.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/teacher"
+              className="rounded-full border border-line px-5 py-2.5 text-sm font-medium text-ink-soft hover:border-ink-faint hover:text-ink"
+            >
+              Back to overview
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setSelections(emptySelections())
+                setRemarks({})
+                setStep('sweep')
+              }}
+              className="rounded-full bg-moss px-5 py-2.5 text-sm font-semibold text-white hover:bg-moss-dark"
+            >
+              Log another sweep
+            </button>
           </div>
-        </section>
-
-        <div className="mt-8">
-          <button
-            onClick={() => setStep('sweep')}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-moss px-6 py-4 font-semibold text-white transition hover:bg-moss-dark sm:w-auto"
-          >
-            <Sparkles size={17} /> Start sweep — {school.className}
-          </button>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
-  // step === 'sweep'
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 pb-40 pt-6 sm:px-8">
-      <button
-        onClick={() => setStep('setup')}
+    <AppShell
+      title="Who did this today?"
+      subtitle={`${school.className} · tap the children each behaviour describes`}
+      actions={
+        <span className="inline-flex items-center gap-2 rounded-full bg-clay-tint px-3.5 py-2 text-xs font-semibold uppercase tracking-wider text-clay-dark">
+          <Zap size={13} /> Class sweep
+        </span>
+      }
+    >
+      <Link
+        to="/teacher"
         className="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-ink"
       >
-        <ArrowLeft size={15} /> Back
-      </button>
+        <ArrowLeft size={15} /> Overview
+      </Link>
 
-      <header className="mt-4">
-        <h1 className="font-display text-2xl text-ink sm:text-3xl">
-          {school.className} · {period}
-        </h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          Tap a student's name next to the behaviour you saw this week.
-        </p>
-      </header>
+      <div className="mt-5 rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-faint">
+          Term
+        </h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PERIODS.map((p) => (
+            <Chip key={p} selected={period === p} onClick={() => setPeriod(p)}>
+              {p}
+            </Chip>
+          ))}
+        </div>
+      </div>
 
-      <div className="mt-8 space-y-8">
+      <div className="mt-5 grid gap-5 pb-32 lg:grid-cols-2">
         {SWEEP_GROUPS.map((group) => (
-          <section key={group.id}>
+          <section
+            key={group.id}
+            className="rounded-2xl border border-line bg-card p-5"
+          >
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-faint">
               {group.label}
             </h2>
-            <div className="mt-3 divide-y divide-line rounded-2xl border border-line bg-white/60">
+            <ul className="mt-3 divide-y divide-line-soft">
               {group.tags.map((tag) => {
                 const sel = selections[tag.id]
                 return (
-                  <div key={tag.id} className="px-4 py-3.5 sm:px-5">
+                  <li key={tag.id} className="py-3.5 first:pt-0 last:pb-0">
                     <p className="mb-2.5 text-sm font-semibold text-ink">
                       {tag.label}
                     </p>
@@ -203,58 +186,96 @@ export default function ClassSweep() {
                       {students.map((s) => {
                         const active = sel.has(s.id)
                         return (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => toggleStudent(tag.id, s.id)}
-                            className={[
-                              'rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                              active
-                                ? group.accent === 'clay'
-                                  ? 'border-clay bg-clay-tint text-clay'
-                                  : 'border-moss bg-moss-tint text-moss-dark'
-                                : 'border-line bg-white text-ink-soft hover:border-ink-faint hover:text-ink',
-                            ].join(' ')}
-                          >
-                            {s.name.split(' ')[0]}
-                          </button>
+                          <span key={s.id} className="inline-flex items-stretch">
+                            <button
+                              type="button"
+                              onClick={() => toggleStudent(tag.id, s.id)}
+                              className={[
+                                'rounded-l-full border px-3.5 py-1.5 text-sm font-medium transition',
+                                active
+                                  ? group.accent === 'clay'
+                                    ? 'border-clay bg-clay-tint text-clay-dark'
+                                    : 'border-moss bg-moss-tint text-moss-dark'
+                                  : 'rounded-r-full border-line bg-paper text-ink-soft hover:border-ink-faint hover:text-ink',
+                              ].join(' ')}
+                            >
+                              {s.name.split(' ')[0]}
+                            </button>
+                            {active && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setOpenRemark((r) =>
+                                    r === key(tag.id, s.id) ? null : key(tag.id, s.id)
+                                  )
+                                }
+                                aria-label={`Add a remark about ${s.name.split(' ')[0]}`}
+                                className={[
+                                  'rounded-r-full border border-l-0 px-2.5 transition',
+                                  group.accent === 'clay'
+                                    ? 'border-clay bg-clay-tint text-clay-dark'
+                                    : 'border-moss bg-moss-tint text-moss-dark',
+                                  remarks[key(tag.id, s.id)]?.trim()
+                                    ? 'opacity-100'
+                                    : 'opacity-60 hover:opacity-100',
+                                ].join(' ')}
+                              >
+                                <MessageSquarePlus size={14} />
+                              </button>
+                            )}
+                          </span>
                         )
                       })}
                     </div>
-                  </div>
+
+                    {students.map((s) => {
+                      const k = key(tag.id, s.id)
+                      if (openRemark !== k || !sel.has(s.id)) return null
+                      const value = remarks[k] || ''
+                      return (
+                        <div key={k} className="kc-fade mt-3">
+                          <textarea
+                            autoFocus
+                            rows={2}
+                            maxLength={MAX_TAG_NOTE}
+                            value={value}
+                            onChange={(e) =>
+                              setRemarks((prev) => ({ ...prev, [k]: e.target.value }))
+                            }
+                            placeholder={`${s.name.split(' ')[0]} — what did this look like?`}
+                            className="w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm leading-relaxed outline-none placeholder:text-ink-faint focus:border-moss"
+                          />
+                          <p className="kc-tnum mt-1 text-right text-xs text-ink-faint">
+                            {value.length}/{MAX_TAG_NOTE}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </li>
                 )
               })}
-            </div>
+            </ul>
           </section>
         ))}
       </div>
 
-      {/* Sticky submit */}
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur sm:px-8">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-          <p className="text-sm text-ink-faint">
-            {totalTags} tag{totalTags === 1 ? '' : 's'} across{' '}
-            {(() => {
-              const s = new Set()
-              Object.values(selections).forEach((set) => set.forEach((id) => s.add(id)))
-              return s.size
-            })()} student
-            {(() => {
-              const s = new Set()
-              Object.values(selections).forEach((set) => set.forEach((id) => s.add(id)))
-              return s.size === 1 ? '' : 's'
-            })()}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur sm:px-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+          <p className="kc-tnum text-sm text-ink-faint">
+            {totalTags} tag{totalTags === 1 ? '' : 's'} across {touched.size} child
+            {touched.size === 1 ? '' : 'ren'}
+            {remarkCount ? ` · ${remarkCount} remark${remarkCount === 1 ? '' : 's'}` : ''}
           </p>
           <button
             type="button"
-            disabled={totalTags === 0}
+            disabled={totalTags === 0 || saving}
             onClick={submit}
-            className="inline-flex items-center gap-2 rounded-full bg-moss px-6 py-3 font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-ink-faint/40 hover:bg-moss-dark"
+            className="inline-flex items-center gap-2 rounded-full bg-moss px-6 py-3 font-semibold text-white transition hover:bg-moss-dark disabled:cursor-not-allowed disabled:bg-ink-faint/40"
           >
-            <Check size={16} /> Save sweep
+            <Sparkles size={16} /> {saving ? 'Saving…' : 'Save sweep'}
           </button>
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }
