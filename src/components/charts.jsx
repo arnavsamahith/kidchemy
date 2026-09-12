@@ -7,10 +7,10 @@ import { RAMP, rampInk, rampStep } from '../data/analytics.js'
 
 export function ChartFrame({ title, subtitle, legend, actions, children, footer }) {
   return (
-    <figure className="m-0 rounded-2xl border border-line bg-card p-5 sm:p-6">
+    <figure className="m-0 rounded-[14px] border border-line bg-card p-5 shadow-[var(--shadow-card)] sm:p-6">
       <figcaption className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-display text-lg leading-tight text-ink">{title}</h3>
+          <h3 className="font-display text-lg font-semibold leading-tight text-ink">{title}</h3>
           {subtitle && (
             <p className="mt-1 max-w-prose text-sm text-ink-faint">{subtitle}</p>
           )}
@@ -45,7 +45,7 @@ export function Legend({ items }) {
 function Tooltip({ x, y, children }) {
   return (
     <div
-      className="pointer-events-none absolute z-20 max-w-[240px] rounded-xl border border-line bg-card px-3 py-2 text-xs leading-relaxed text-ink shadow-[0_8px_28px_rgba(28,28,28,0.10)]"
+      className="pointer-events-none absolute z-20 max-w-[240px] rounded-[12px] border border-line bg-card px-3 py-2 text-xs leading-relaxed text-ink shadow-[0_8px_28px_rgba(28,28,28,0.10)]"
       style={{ left: x, top: y, transform: 'translate(-50%, calc(-100% - 12px))' }}
     >
       {children}
@@ -54,7 +54,7 @@ function Tooltip({ x, y, children }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Stat tile — when the answer is a number, not a chart
+   Stat tile: when the answer is a number, not a chart
    ══════════════════════════════════════════════════════════════════ */
 
 export function StatTile({ label, value, hint, tone = 'ink', icon: Icon }) {
@@ -65,7 +65,7 @@ export function StatTile({ label, value, hint, tone = 'ink', icon: Icon }) {
         ? 'text-good'
         : 'text-ink'
   return (
-    <div className="rounded-2xl border border-line bg-card p-5">
+    <div className="rounded-[14px] border border-line bg-card p-5">
       <div className="flex items-center gap-2 text-sm text-ink-faint">
         {Icon && <Icon size={15} />}
         {label}
@@ -79,7 +79,7 @@ export function StatTile({ label, value, hint, tone = 'ink', icon: Icon }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Heatmap — every child × every dimension
+   Heatmap: every child against every dimension
    Sequential: one hue, light → dark. Value also printed in the cell,
    so the reading never depends on colour alone.
    ══════════════════════════════════════════════════════════════════ */
@@ -159,7 +159,7 @@ export function DimensionHeatmap({ matrix, onSelectStudent }) {
                         className="kc-tnum flex h-11 items-center justify-center rounded-lg text-[13px] font-semibold transition"
                         style={{ background: RAMP[step], color: rampInk(step) }}
                       >
-                        {c.score || '–'}
+                        {c.score || '-'}
                       </div>
                     </td>
                   )
@@ -199,7 +199,7 @@ export function DimensionHeatmap({ matrix, onSelectStudent }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Growth over terms — one line per child
+   Growth over terms: one line per child
    ══════════════════════════════════════════════════════════════════ */
 
 const G = { w: 720, h: 260, l: 40, r: 104, t: 18, b: 34 }
@@ -234,7 +234,7 @@ export function GrowthLines({ growth }) {
   if (periods.length < 2) {
     return (
       <p className="text-sm text-ink-faint">
-        Growth needs at least two terms of observations. Keep logging — this
+        Growth needs at least two terms of observations. Keep logging and this
         chart fills itself in.
       </p>
     )
@@ -375,7 +375,7 @@ export function GrowthLines({ growth }) {
       </svg>
 
       {hoverIdx !== null && (
-        <div className="mt-3 rounded-xl border border-line bg-paper-2 px-4 py-3 text-sm">
+        <div className="mt-3 rounded-[12px] border border-line bg-paper-2 px-4 py-3 text-sm">
           <p className="font-semibold text-ink">{periods[hoverIdx]}</p>
           <ul className="mt-1.5 grid gap-1">
             {series.map((s) => {
@@ -403,7 +403,7 @@ export function GrowthLines({ growth }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Tag frequency — one series, horizontal bars
+   Tag frequency: one series, horizontal bars
    ══════════════════════════════════════════════════════════════════ */
 
 export function TagBars({ data, onSelectTag, activeTag }) {
@@ -450,7 +450,7 @@ export function TagBars({ data, onSelectTag, activeTag }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Cadence — how often this actually gets used
+   Cadence: how often this actually gets used
    ══════════════════════════════════════════════════════════════════ */
 
 export function CadenceColumns({ data }) {
@@ -468,7 +468,7 @@ export function CadenceColumns({ data }) {
           <div
             className="w-full max-w-[24px] rounded-t-[4px]"
             style={{
-              // A zero month gets a hairline, not a stub — a stub would read
+              // A zero month gets a hairline, not a stub. A stub would read
               // as "one or two" and quietly overstate the record.
               height: d.count ? `${Math.max((d.count / max) * 86, 5)}px` : '2px',
               background: d.count
@@ -486,7 +486,7 @@ export function CadenceColumns({ data }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Meter — a single proportion (coverage this term)
+   Meter: a single proportion (coverage this term)
    ══════════════════════════════════════════════════════════════════ */
 
 export function Meter({ pct, tone = 'good' }) {

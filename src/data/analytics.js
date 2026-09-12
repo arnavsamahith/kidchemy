@@ -1,5 +1,5 @@
 // Class-level analysis. Everything here is derived from the same taps the
-// per-child profile uses — no separate scoring, so a teacher never sees two
+// per-child profile uses. No separate scoring, so a teacher never sees two
 // numbers that disagree.
 
 import {
@@ -10,7 +10,12 @@ import {
   PERIODS,
   SUBJECTS,
 } from './taxonomy.js'
-import { dimensionScores, growthSeries } from './derive.js'
+import {
+  dimensionScores,
+  growthSeries,
+  profileDepth,
+  hasStory,
+} from './derive.js'
 
 export const SERIES_COLORS = [
   'var(--color-series-1)',
@@ -34,7 +39,7 @@ export function seriesColor(index) {
   return SERIES_COLORS[index % SERIES_COLORS.length]
 }
 
-/** Bucket a 0–100 score onto the sequential ramp. */
+/** Bucket a 0 to 100 score onto the sequential ramp. */
 export function rampStep(score) {
   if (!score) return 0
   if (score < 20) return 1
@@ -57,7 +62,7 @@ export function allObservations(students) {
   )
 }
 
-/* ── Heatmap: every child × every dimension ─────────────────── */
+/* ── Heatmap: every child by every dimension ─────────────────── */
 
 export function dimensionMatrix(students) {
   return {
@@ -75,7 +80,7 @@ export function dimensionMatrix(students) {
   }
 }
 
-/** Where the whole class is thin — the dimensions nobody has evidence for. */
+/** Where the whole class is thin, the dimensions nobody has evidence for. */
 export function classBlindSpots(students, threshold = 20) {
   if (!students.length) return []
   const perDim = DIMENSIONS.map((d) => {
@@ -83,7 +88,12 @@ export function classBlindSpots(students, threshold = 20) {
       (s) => dimensionScores(s.observations).find((x) => x.id === d.id)?.score ?? 0
     )
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length
-    return { ...d, avg: Math.round(avg) }
+    return {
+      ...d,
+      avg: Math.round(avg),
+      seen: scores.filter((x) => x > 0).length,
+      total: scores.length,
+    }
   })
   return perDim.filter((d) => d.avg < threshold).sort((a, b) => a.avg - b.avg)
 }
@@ -140,7 +150,7 @@ export function tagFrequency(students, { limit = 12 } = {}) {
     .slice(0, limit)
 }
 
-/** Tags nobody in the class has ever been given — usually says more about
+/** Tags nobody in the class has ever been given, usually says more about
  *  the teacher's habits than about the children. */
 export function unusedTags(students) {
   const used = new Set(allObservations(students).flatMap((o) => o.tags || []))
@@ -162,6 +172,8 @@ export function coverage(students, period) {
     period,
     logged,
     missing,
+    done: logged.length,
+    total: students.length,
     pct: students.length
       ? Math.round((logged.length / students.length) * 100)
       : 0,
@@ -182,7 +194,7 @@ export function lastObservation(student) {
   )[student.observations.length - 1]
 }
 
-/** Monthly observation counts across the class — the honest picture of how
+/** Monthly observation counts across the class, the honest picture of how
  *  often this actually gets used. */
 export function cadenceByMonth(students, months = 8) {
   const obs = allObservations(students)
@@ -279,6 +291,10 @@ export function filterObservations(observations, { query, period, tag, milestone
     if (!q) return true
     const haystack = [
       o.note,
+      o.story?.context,
+      o.story?.saw,
+      o.story?.meant,
+      o.story?.next,
       o.teacher,
       o.period,
       ...(o.tags || []).map((t) => TAG_MAP[t]?.label || t),
@@ -289,4 +305,153 @@ export function filterObservations(observations, { query, period, tag, milestone
       .toLowerCase()
     return haystack.includes(q)
   })
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Equity and attention
+   The single most important addition. A system that rewards visible
+   behaviour will systematically under-describe quiet children, which is
+   the same bias report cards have wearing nicer clothes. These functions
+   exist so the bias is measured rather than assumed away.
+   ══════════════════════════════════════════════════════════════════ */
+
+
+/**
+ * Who is being seen, and who is not. Sorted thinnest first on purpose,
+ * because the top of this list is the work.
+ */
+export function attentionGap(students = []) {
+  const rows = students.map((s) => {
+    const obs = s.observations || []
+    const depth = profileDepth(obs)
+    const last = obs.length
+      ? obs.map((o) => o.date).sort().slice(-1)[0]
+      : null
+    return {
+      id: s.id,
+      name: s.name,
+      rollNo: s.rollNo,
+      studentCode: s.studentCode,
+      count: obs.length,
+      stories: obs.filter(hasStory).length,
+      depth: depth.score,
+      depthLabel: depth.label,
+      last,
+      daysSince: last ? daysSince(last) : null,
+      teachers: new Set(obs.map((o) => o.teacher).filter(Boolean)).size,
+    }
+  })
+
+  const counts = rows.map((r) => r.count)
+  const mean = counts.length
+    ? counts.reduce((a, b) => a + b, 0) / counts.length
+    : 0
+  const max = Math.max(0, ...counts)
+  const min = Math.min(0, ...counts)
+
+  return {
+    rows: rows.sort((a, b) => a.depth - b.depth || a.count - b.count),
+    mean: Math.round(mean * 10) / 10,
+    max,
+    min,
+    // Gini-ish: how unevenly attention is spread. 0 is perfectly even.
+    spread: max > 0 ? Math.round(((max - min) / max) * 100) : 0,
+    neglected: rows.filter((r) => r.count === 0 || (r.daysSince ?? 999) > 28),
+  }
+}
+
+/**
+ * Children nobody has looked at in a while. This is the nudge that keeps
+ * the quiet third row from disappearing.
+ */
+export function overdue(students = [], days = 21) {
+  return students
+    .map((s) => {
+      const last = (s.observations || []).map((o) => o.date).sort().slice(-1)[0]
+      return { student: s, last, days: last ? daysSince(last) : null }
+    })
+    .filter((r) => r.days === null || r.days > days)
+    .sort((a, b) => (b.days ?? 9999) - (a.days ?? 9999))
+}
+
+/**
+ * How much of the record is being withheld from parents, per class. A
+ * teacher who marks everything school-only has stopped believing the
+ * product is safe, and that is worth knowing before the data dies.
+ */
+export function visibilitySplit(students = []) {
+  const all = allObservations(students)
+  const school = all.filter((o) => o.visibility === 'school').length
+  const shared = all.length - school
+  return {
+    shared,
+    school,
+    total: all.length,
+    schoolPct: all.length ? Math.round((school / all.length) * 100) : 0,
+  }
+}
+
+/**
+ * Does the record lean on growth edges rather than strengths for some
+ * children and not others. Flags children whose record is mostly concerns.
+ */
+export function toneBalance(students = []) {
+  return students
+    .map((s) => {
+      const obs = s.observations || []
+      let strength = 0
+      let edge = 0
+      obs.forEach((o) =>
+        (o.tags || []).forEach((t) => {
+          const tag = TAG_MAP[t]
+          if (!tag) return
+          if (tag.isWatch) edge += 1
+          else strength += 1
+        })
+      )
+      const total = strength + edge
+      return {
+        id: s.id,
+        name: s.name,
+        strength,
+        edge,
+        edgePct: total ? Math.round((edge / total) * 100) : 0,
+        total,
+      }
+    })
+    .filter((r) => r.total >= 3 && r.edgePct >= 50)
+    .sort((a, b) => b.edgePct - a.edgePct)
+}
+
+/** Roster grouped by grade and section, for the admin console. */
+export function byClass(students = []) {
+  const map = new Map()
+  students.forEach((s) => {
+    const key = `${s.grade ?? '?'}-${s.section ?? '?'}`
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        grade: s.grade,
+        section: s.section,
+        school: s.school,
+        students: [],
+      })
+    }
+    map.get(key).students.push(s)
+  })
+  return [...map.values()]
+    .map((c) => ({
+      ...c,
+      count: c.students.length,
+      observations: c.students.reduce(
+        (n, s) => n + (s.observations?.length || 0),
+        0
+      ),
+      coverage: c.students.filter((s) => (s.observations?.length || 0) > 0).length,
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.grade) - Number(b.grade) ||
+        String(a.section).localeCompare(String(b.section))
+    )
 }

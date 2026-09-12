@@ -1,424 +1,630 @@
-import { useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import React, { useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import {
-  ArrowUpRight,
+  ClipboardList,
   Eye,
   EyeOff,
-  Filter,
-  NotebookPen,
+  Feather,
+  Flag,
+  Lightbulb,
+  Link2,
+  MessageSquareQuote,
   Pencil,
-  Search,
-  Trash2,
-  X,
+  Plus,
+  Sparkles,
+  Timer,
+  TrendingUp,
+  User,
 } from 'lucide-react'
 import AppShell from '../../components/AppShell.jsx'
-import { ChartFrame, StatTile } from '../../components/charts.jsx'
+import {
+  Avatar,
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardHead,
+  EmptyState,
+  Field,
+  Meter,
+  Modal,
+  Segmented,
+  Select,
+  Tabs,
+  Textarea,
+  Toast,
+  useToast,
+} from '../../components/ui.jsx'
 import StrengthMap from '../../components/StrengthMap.jsx'
 import { useStore } from '../../data/store.jsx'
 import {
+  conditionsThatWork,
   dimensionScores,
+  dispositionScores,
   evidenceSummary,
-  growthHighlights,
-  learningStyle,
+  growthEdges,
+  growthSeries,
+  hpcDomains,
+  nextSteps,
+  profileDepth,
+  storyText,
 } from '../../data/derive.js'
-import {
-  daysSince,
-  filterObservations,
-  lastObservation,
-  subjectPicture,
-  tagRemarks,
-} from '../../data/analytics.js'
-import {
-  MILESTONES,
-  MILESTONE_MAP,
-  PERIODS,
-  TAG_MAP,
-} from '../../data/taxonomy.js'
+import { MILESTONE_MAP, TAG_MAP, PERIODS, FREQUENCIES } from '../../data/taxonomy.js'
+import { classLabel } from '../../data/roster.js'
+
+/* ─── The child's own voice ──────────────────────────────────── */
+
+function SelfAssessmentModal({ open, onClose, student, onDone }) {
+  const { addSelfAssessment, settings } = useStore()
+  const [form, setForm] = useState({
+    enjoyed: '',
+    hard: '',
+    wantNext: '',
+    feeling: 'steady',
+  })
+  const [busy, setBusy] = useState(false)
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const run = async () => {
+    setBusy(true)
+    try {
+      await addSelfAssessment(student.id, {
+        ...form,
+        period: settings?.terms?.current || PERIODS[0],
+        date: new Date().toISOString().slice(0, 10),
+      })
+      onDone()
+      onClose()
+      setForm({ enjoyed: '', hard: '', wantNext: '', feeling: 'steady' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`What ${student.name.split(' ')[0]} says`}
+      subtitle="The Holistic Progress Card asks for the child's own voice. Read these out and type what they answer, in their words."
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" loading={busy} onClick={run}>
+            Save
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <Field label="What did you enjoy most this term?">
+          <Textarea rows={2} value={form.enjoyed} onChange={set('enjoyed')} />
+        </Field>
+        <Field label="What was hard?">
+          <Textarea rows={2} value={form.hard} onChange={set('hard')} />
+        </Field>
+        <Field label="What do you want to get better at?">
+          <Textarea rows={2} value={form.wantNext} onChange={set('wantNext')} />
+        </Field>
+        <Field label="How does school feel right now?">
+          <Segmented
+            options={[
+              { value: 'growing', label: 'Growing' },
+              { value: 'steady', label: 'Steady' },
+              { value: 'stuck', label: 'Stuck' },
+            ]}
+            value={form.feeling}
+            onChange={(v) => setForm((f) => ({ ...f, feeling: v }))}
+          />
+        </Field>
+      </div>
+    </Modal>
+  )
+}
+
+/* ─── One observation in the timeline ────────────────────────── */
+
+function ObservationRow({ obs, studentId }) {
+  const milestone = obs.milestone ? MILESTONE_MAP[obs.milestone] : null
+  const shared = (obs.visibility || 'shared') === 'shared'
+  const tags = (obs.tags || []).map((t) => TAG_MAP[t]).filter(Boolean)
+
+  return (
+    <article className="rounded-[12px] border border-line bg-card p-4">
+      <header className="mb-2.5 flex flex-wrap items-center gap-2">
+        <Badge tone="outline">{obs.period}</Badge>
+        <span className="kc-tnum text-2xs text-ink-faint">{obs.date}</span>
+        {obs.teacher && (
+          <span className="text-2xs text-ink-faint">by {obs.teacher}</span>
+        )}
+        {milestone && <Badge tone="accent">{milestone.label}</Badge>}
+        <Badge tone={shared ? 'moss' : 'neutral'} icon={shared ? Eye : EyeOff}>
+          {shared ? 'Shared' : 'School only'}
+        </Badge>
+        <Link
+          to={`/teacher/student/${studentId}/observe/${obs.id}`}
+          className="ml-auto rounded-lg p-1.5 text-ink-faint hover:bg-paper-2 hover:text-ink"
+          aria-label="Edit"
+        >
+          <Pencil size={14} />
+        </Link>
+      </header>
+
+      {storyText(obs, 'context') && (
+        <p className="mb-2 text-xs italic text-ink-faint">
+          {storyText(obs, 'context')}
+        </p>
+      )}
+      {storyText(obs, 'saw') && (
+        <p className="text-sm leading-relaxed text-ink">{storyText(obs, 'saw')}</p>
+      )}
+      {storyText(obs, 'meant') && (
+        <p className="mt-2 border-l-2 border-moss-line pl-3 text-sm leading-relaxed text-ink-soft">
+          <span className="kc-eyebrow mr-1.5">Reading</span>
+          {storyText(obs, 'meant')}
+        </p>
+      )}
+      {storyText(obs, 'next') && (
+        <p className="mt-2 flex gap-2 rounded-[10px] bg-accent-tint px-3 py-2 text-sm text-accent-ink">
+          <Lightbulb size={14} className="mt-0.5 shrink-0" />
+          {storyText(obs, 'next')}
+        </p>
+      )}
+
+      {tags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {tags.map((t) => (
+            <Badge key={t.id} tone={t.isWatch ? 'warn' : 'neutral'}>
+              {t.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {Object.entries(obs.tagNotes || {}).length > 0 && (
+        <ul className="mt-2.5 space-y-1">
+          {Object.entries(obs.tagNotes).map(([tagId, text]) => (
+            <li key={tagId} className="text-xs text-ink-soft">
+              <span className="font-semibold text-ink">
+                {TAG_MAP[tagId]?.label || tagId}:
+              </span>{' '}
+              {text}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-2xs text-ink-faint">
+        {obs.concentrationMinutes ? (
+          <span className="flex items-center gap-1">
+            <Timer size={11} />
+            {obs.concentrationMinutes} min
+            {obs.selfChosen ? ', self chosen' : ''}
+          </span>
+        ) : null}
+        {obs.artefactUrl ? (
+          <a
+            href={obs.artefactUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 font-semibold text-accent-ink hover:underline"
+          >
+            <Link2 size={11} /> What they made
+          </a>
+        ) : null}
+        {(obs.dispositions || []).length > 0 && (
+          <span>{obs.dispositions.length} disposition noted</span>
+        )}
+      </div>
+    </article>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
 
 export default function StudentDetail() {
   const { studentId } = useParams()
-  const navigate = useNavigate()
-  const { getStudent, deleteObservation, students, loading } = useStore()
+  const { getStudent, setFrequency, settings } = useStore()
+  const [toast, setToast] = useToast()
+  const [tab, setTab] = useState('picture')
+  const [selfOpen, setSelfOpen] = useState(false)
+
   const student = getStudent(studentId)
+  const obs = student?.observations || []
 
-  const [query, setQuery] = useState('')
-  const [period, setPeriod] = useState('')
-  const [tag, setTag] = useState('')
-  const [milestone, setMilestone] = useState('')
-  const [visibility, setVisibility] = useState('')
-  const [confirming, setConfirming] = useState(null)
-
-  const observations = useMemo(
-    () =>
-      [...(student?.observations || [])].sort((a, b) =>
-        String(b.date).localeCompare(String(a.date))
-      ),
-    [student]
-  )
-
-  const shown = useMemo(
-    () => filterObservations(observations, { query, period, tag, milestone, visibility }),
-    [observations, query, period, tag, milestone, visibility]
-  )
-
-  const usedTags = useMemo(() => {
-    const set = new Set(observations.flatMap((o) => o.tags || []))
-    return [...set].map((id) => ({ id, label: TAG_MAP[id]?.label || id }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-  }, [observations])
+  const data = useMemo(() => {
+    if (!student) return null
+    return {
+      dims: dimensionScores(obs),
+      disp: dispositionScores(obs),
+      hpc: hpcDomains(obs),
+      steps: nextSteps(obs, 3),
+      edges: growthEdges(obs, { includeSchoolOnly: true }),
+      conditions: conditionsThatWork(student, obs, 'teacher'),
+      depth: profileDepth(obs),
+      series: growthSeries(obs),
+    }
+  }, [student, obs])
 
   if (!student) {
-    if (loading) return <AppShell title="Loading…"><p className="text-ink-faint">One moment.</p></AppShell>
-    if (!students.length) return <Navigate to="/teacher" replace />
     return (
-      <AppShell title="Not found">
-        <p className="text-ink-soft">
-          No child with that id.{' '}
-          <Link to="/teacher/roster" className="text-moss underline underline-offset-4">
-            Back to the roster
-          </Link>
-        </p>
+      <AppShell title="Student not found">
+        <EmptyState
+          icon={User}
+          title="Not in your roster"
+          body="That student either does not exist or is not in a class you teach."
+          action={
+            <Button as={Link} to="/teacher/roster" variant="primary">
+              Back to the roster
+            </Button>
+          }
+        />
       </AppShell>
     )
   }
 
-  const dims = dimensionScores(student.observations)
-  const highlights = growthHighlights(student.observations)
-  const style = learningStyle(student, student.observations)
-  const subjects = subjectPicture(student).filter((s) => s.understanding || s.engagement)
-  const remarks = tagRemarks(student.observations)
-  const last = lastObservation(student)
-  const gap = daysSince(last?.date)
-  const sharedCount = student.observations.filter(
-    (o) => (o.visibility || 'shared') === 'shared'
-  ).length
-  const anyFilter = query || period || tag || milestone || visibility
-
-  const remove = async (obsId) => {
-    await deleteObservation(student.id, obsId)
-    setConfirming(null)
-  }
+  const first = student.name.split(' ')[0]
+  const sorted = [...obs].sort((a, b) => String(b.date).localeCompare(String(a.date)))
 
   return (
     <AppShell
+      wide
+      eyebrow={`${classLabel(student)}${student.rollNo ? ` - Roll ${student.rollNo}` : ''}${student.studentCode ? ` - ${student.studentCode}` : ''}`}
       title={student.name}
-      subtitle={`${student.className || ''} · ${evidenceSummary(student.observations)}`}
+      subtitle={evidenceSummary(obs)}
       actions={
         <>
-          <Link
-            to={`/profile/${student.id}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-ink-faint hover:text-ink"
-          >
-            Parent view <ArrowUpRight size={14} />
-          </Link>
-          <Link
+          <Button as={Link} to={`/profile/${student.id}`} icon={Eye}>
+            See the parent view
+          </Button>
+          <Button icon={MessageSquareQuote} onClick={() => setSelfOpen(true)}>
+            Record their voice
+          </Button>
+          <Button
+            as={Link}
             to={`/teacher/student/${student.id}/observe`}
-            className="inline-flex items-center gap-2 rounded-full bg-moss px-4 py-2 text-sm font-semibold text-white transition hover:bg-moss-dark"
+            variant="primary"
+            icon={Plus}
           >
-            <NotebookPen size={15} /> New observation
-          </Link>
+            New observation
+          </Button>
         </>
       }
+      tabs={
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: 'picture', label: 'The picture', icon: Sparkles },
+            { value: 'next', label: 'What next', icon: Lightbulb },
+            { value: 'hpc', label: 'Progress card', icon: ClipboardList },
+            { value: 'timeline', label: 'Timeline', icon: Feather, count: obs.length },
+          ]}
+        />
+      }
     >
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
-          label="Observations"
-          value={student.observations.length}
-          hint={`${sharedCount} shared with the parent`}
-        />
-        <StatTile
-          label="Last logged"
-          value={gap === null ? '—' : gap === 0 ? 'Today' : `${gap}d`}
-          hint={last?.date ? `${last.period} · ${last.teacher}` : 'Nothing yet'}
-          tone={gap !== null && gap > 45 ? 'warn' : 'ink'}
-        />
-        <StatTile
-          label="Custom remarks"
-          value={remarks.length}
-          hint="Tag-level notes in your words"
-        />
-        <StatTile
-          label="Cadence"
-          value={student.frequency || 'Weekly'}
-          hint="How often you plan to update"
-        />
+      {/* Depth banner */}
+      <div className="mb-4 flex flex-wrap items-center gap-4 rounded-[12px] border border-line bg-card px-4 py-3">
+        <Avatar name={student.name} size={40} />
+        <div className="min-w-[180px] flex-1">
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <span className="text-xs font-bold text-ink">
+              Profile depth: {data.depth.label}
+            </span>
+            <span className="kc-tnum text-2xs text-ink-faint">
+              {data.depth.count} entries, {data.depth.stories} written,{' '}
+              {data.depth.terms} term{data.depth.terms === 1 ? '' : 's'}
+            </span>
+          </div>
+          <Meter
+            pct={data.depth.score}
+            tone={data.depth.score >= 60 ? 'good' : data.depth.score >= 25 ? 'warn' : 'alert'}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="kc-eyebrow">Log</span>
+          <Select
+            value={student.frequency || 'Weekly'}
+            onChange={(e) => setFrequency(student.id, e.target.value)}
+            className="h-8 w-32 text-xs"
+          >
+            {FREQUENCIES.map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </Select>
+        </div>
       </div>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <ChartFrame
-          title="Observed strengths"
-          subtitle="Seven dimensions, each built only from the tags behind it."
-        >
-          <StrengthMap dims={dims} />
-        </ChartFrame>
+      {data.depth.score < 25 && (
+        <Callout tone="warn" icon={Flag} className="mb-4" title="This profile is thin">
+          There is not enough here yet to say much about {first}, and the parent
+          page will say so plainly rather than padding. Two or three more
+          observations, ideally with one written story, changes that.
+        </Callout>
+      )}
 
-        <div className="grid gap-5">
-          <ChartFrame title="How they learn best">
-            <p className="text-[15px] leading-relaxed text-ink-soft">{style}</p>
-            {highlights.length > 0 && (
-              <ul className="mt-4 grid gap-2">
-                {highlights.map((h) => (
-                  <li key={h.id} className="flex items-baseline gap-2 text-sm">
-                    <span className="kc-tnum font-semibold text-good">
-                      +{h.delta}
-                    </span>
-                    <span className="text-ink-soft">{h.label} since Term 1</span>
+      {/* ── Tab: the picture ──────────────────────────────── */}
+      {tab === 'picture' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHead
+              eyebrow="Strengths"
+              title="What we have actually seen"
+              subtitle="Bands, not scores. An empty axis means we have not seen it, not that it is absent."
+            />
+            <StrengthMap dims={data.dims} />
+          </Card>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHead
+                eyebrow="Learning stories"
+                title="How they meet the learning"
+                subtitle="Carr's dispositions. A different question from what they are good at."
+              />
+              <ul className="space-y-2.5">
+                {data.disp.map((d) => (
+                  <li key={d.id}>
+                    <div className="mb-1 flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-semibold text-ink">{d.label}</span>
+                      <Badge tone={d.count ? 'moss' : 'outline'}>{d.band}</Badge>
+                    </div>
+                    <Meter pct={Math.min(100, d.count * 25)} tone={d.count ? 'moss' : 'faint'} />
+                    <p className="mt-1 text-2xs text-ink-faint">{d.blurb}</p>
                   </li>
                 ))}
               </ul>
-            )}
-          </ChartFrame>
+            </Card>
 
-          <ChartFrame title="Subjects" subtitle="Latest recorded picture per subject.">
-            {subjects.length ? (
-              <ul className="grid gap-2.5">
-                {subjects.map((s) => (
-                  <li
-                    key={s.subject}
-                    className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-paper-2 px-4 py-3"
-                  >
-                    <span className="text-sm font-medium text-ink">{s.subject}</span>
-                    <span className="text-xs text-ink-soft">
-                      {s.understanding || '—'}
-                      {s.engagement ? ` · ${s.engagement} engagement` : ''}
+            <Card>
+              <CardHead
+                eyebrow="Conditions"
+                title="When we have seen the best work"
+                subtitle="Situational and counted. This is not a learning style, and it is revisable."
+              />
+              {data.conditions.length ? (
+                <ul className="space-y-2.5">
+                  {data.conditions.map((c) => (
+                    <li key={c.id} className="rounded-[10px] border border-line-soft p-3">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-semibold text-ink">{c.label}</span>
+                        <Badge tone="outline">seen {c.count}x</Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-ink-soft">{c.advice}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-ink-faint">
+                  Nothing yet. Conditions show up once you tap things like
+                  "reaches for the materials first" or "answers after a pause".
+                </p>
+              )}
+            </Card>
+          </div>
+
+          {data.series.length > 1 && (
+            <Card>
+              <CardHead
+                eyebrow="Across terms"
+                title="What moved"
+                subtitle="Cumulative, so the line only falls if nothing new is seen."
+              />
+              <ol className="space-y-3">
+                {data.series.map((row) => (
+                  <li key={row.period} className="flex gap-4">
+                    <span className="w-16 shrink-0 text-xs font-bold text-ink">
+                      {row.period}
                     </span>
-                    {s.note && (
-                      <p className="w-full text-xs leading-relaxed text-ink-faint">
-                        {s.note}
-                      </p>
-                    )}
+                    <span className="flex-1">
+                      <span className="block text-sm text-ink-soft">
+                        {row.standing.length
+                          ? `Standing out: ${row.standing.join(', ')}`
+                          : 'Nothing recorded'}
+                      </span>
+                      {row.moved.length > 0 && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {row.moved.map((m) => (
+                            <Badge key={m} tone="good" icon={TrendingUp}>
+                              {m} moved
+                            </Badge>
+                          ))}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: what next ────────────────────────────────── */}
+      {tab === 'next' && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHead
+              eyebrow="Zone of proximal development"
+              title="One step past what they manage alone"
+              subtitle="Each move names the help you give now, and the signal that the help can go."
+            />
+            {data.steps.length ? (
+              <ol className="space-y-3">
+                {data.steps.map((s) => (
+                  <li key={s.dimensionId} className="rounded-[12px] border border-line p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge tone="accent">{s.label}</Badge>
+                      <span className="text-2xs text-ink-faint">{s.band}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-ink">{s.move}</p>
+                    <p className="mt-1.5 text-sm text-ink-soft">
+                      <span className="kc-eyebrow mr-1.5">Scaffold</span>
+                      {s.scaffold}
+                    </p>
+                    <p className="mt-1 text-sm text-ink-soft">
+                      <span className="kc-eyebrow mr-1.5">Stop when</span>
+                      {s.fade}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <EmptyState
+                icon={Lightbulb}
+                title="Nothing to suggest yet"
+                body="Suggestions come from observations. Add two or three and this fills in."
+              />
+            )}
+          </Card>
+
+          <Card>
+            <CardHead
+              eyebrow="Growth edges"
+              title="What to work on"
+              subtitle="School-only unless you shared the observation. This is the part that keeps the profile believable."
+            />
+            {data.edges.length ? (
+              <ul className="space-y-3">
+                {data.edges.map((e) => (
+                  <li key={e.id} className="rounded-[12px] border border-warn/25 bg-warn-tint p-4">
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <span className="text-sm font-bold text-ink">{e.title}</span>
+                      <Badge tone="warn">seen {e.count}x</Badge>
+                    </div>
+                    <p className="text-sm text-ink-soft">{e.teacher}</p>
+                    <p className="mt-1.5 text-xs italic text-ink-faint">{e.horizon}</p>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="text-sm text-ink-faint">
-                No subject detail recorded yet. Add it once a term from the
-                observation form.
+                No growth edges logged. That is fine, but a profile that can only
+                say nice things stops being believed by the second parent
+                meeting. The growth edge tags are in the observation form.
               </p>
             )}
-          </ChartFrame>
+          </Card>
         </div>
-      </div>
+      )}
 
-      {/* ── Timeline ───────────────────────────────────────── */}
-      <section className="mt-8">
-        <h2 className="mb-3 font-display text-xl text-ink">Observation history</h2>
+      {/* ── Tab: progress card ────────────────────────────── */}
+      {tab === 'hpc' && (
+        <div className="space-y-4">
+          <Callout tone="info" icon={ClipboardList} title="Holistic Progress Card view">
+            The five domains from the NEP 2020 card, built from taps you have
+            already made. Kidchemy is aligned with the published framework, not
+            endorsed by it.
+          </Callout>
 
-        <div className="mb-4 flex flex-wrap items-center gap-2.5 rounded-2xl border border-line bg-card px-4 py-3">
-          <label className="relative min-w-[200px] flex-1">
-            <Search
-              size={15}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-            />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search notes, remarks, tags…"
-              className="w-full rounded-full border border-line bg-paper py-2.5 pl-10 pr-4 text-sm outline-none focus:border-moss"
-            />
-          </label>
-
-          <Filter size={15} className="text-ink-faint" />
-          <Select value={period} onChange={setPeriod} label="All terms" options={PERIODS.map((p) => ({ value: p, label: p }))} />
-          <Select
-            value={tag}
-            onChange={setTag}
-            label="Any tag"
-            options={usedTags.map((t) => ({ value: t.id, label: t.label }))}
-          />
-          <Select
-            value={milestone}
-            onChange={setMilestone}
-            label="Any milestone"
-            options={MILESTONES.map((m) => ({ value: m.id, label: m.label }))}
-          />
-          <Select
-            value={visibility}
-            onChange={setVisibility}
-            label="Any visibility"
-            options={[
-              { value: 'shared', label: 'Shared' },
-              { value: 'school', label: 'School only' },
-            ]}
-          />
-
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('')
-                setPeriod('')
-                setTag('')
-                setMilestone('')
-                setVisibility('')
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-ink-soft hover:bg-paper-2"
-            >
-              <X size={14} /> Clear
-            </button>
-          )}
-          <span className="kc-tnum ml-auto text-sm text-ink-faint">
-            {shown.length} of {observations.length}
-          </span>
-        </div>
-
-        {shown.length ? (
-          <ol className="relative grid gap-4 border-l border-line pl-6">
-            {shown.map((o) => (
-              <li key={o.id} className="relative">
-                <span
-                  aria-hidden="true"
-                  className="absolute -left-[29px] top-5 h-2.5 w-2.5 rounded-full border-2 border-paper"
-                  style={{
-                    background:
-                      (o.visibility || 'shared') === 'shared'
-                        ? 'var(--color-series-1)'
-                        : 'var(--color-series-3)',
-                  }}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.hpc.map((d) => (
+              <Card key={d.id}>
+                <p className="kc-eyebrow">{d.label}</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="font-display text-2xl font-semibold text-ink">
+                    {d.level?.label || 'Not seen'}
+                  </span>
+                  <span className="kc-tnum text-2xs text-ink-faint">
+                    {d.evidenceCount} signal{d.evidenceCount === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <Meter
+                  pct={d.score}
+                  tone={d.score >= 62 ? 'good' : d.score >= 30 ? 'warn' : 'faint'}
+                  className="mt-2"
                 />
-                <article className="rounded-2xl border border-line bg-card p-5">
-                  <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <span className="kc-tnum text-sm font-semibold text-ink">
-                      {o.date}
-                    </span>
-                    <span className="rounded-full bg-paper-2 px-2.5 py-0.5 text-xs font-medium text-ink-soft">
-                      {o.period}
-                    </span>
-                    {o.teacher && (
-                      <span className="text-xs text-ink-faint">{o.teacher}</span>
-                    )}
-                    {o.milestone && (
-                      <span className="rounded-full bg-clay-tint px-2.5 py-0.5 text-xs font-semibold text-clay-dark">
-                        {MILESTONE_MAP[o.milestone]?.label || o.milestone}
-                      </span>
-                    )}
-                    <span
-                      className={[
-                        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
-                        (o.visibility || 'shared') === 'shared'
-                          ? 'bg-moss-tint text-moss-dark'
-                          : 'bg-paper-3 text-ink-soft',
-                      ].join(' ')}
-                    >
-                      {(o.visibility || 'shared') === 'shared' ? (
-                        <>
-                          <Eye size={12} /> Shared
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff size={12} /> School only
-                        </>
-                      )}
-                    </span>
-
-                    <span className="ml-auto flex items-center gap-1">
-                      <Link
-                        to={`/teacher/student/${student.id}/observe/${o.id}`}
-                        className="rounded-lg p-2 text-ink-faint transition hover:bg-paper-2 hover:text-ink"
-                        aria-label="Edit this observation"
-                      >
-                        <Pencil size={15} />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => setConfirming(o.id)}
-                        className="rounded-lg p-2 text-ink-faint transition hover:bg-paper-2 hover:text-alert"
-                        aria-label="Delete this observation"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </span>
-                  </header>
-
-                  {o.note && (
-                    <p className="mt-3 border-l-2 border-moss/30 pl-3 text-[15px] italic leading-relaxed text-ink-soft">
-                      “{o.note}”
-                    </p>
-                  )}
-
-                  {(o.tags || []).length > 0 && (
-                    <ul className="mt-3 grid gap-2">
-                      {(o.tags || []).map((t) => {
-                        const remark = (o.tagNotes || {})[t]
-                        return (
-                          <li key={t} className="flex flex-wrap items-baseline gap-2">
-                            <span className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft">
-                              {TAG_MAP[t]?.label || t}
-                            </span>
-                            {remark && (
-                              <span className="min-w-0 flex-1 text-sm leading-relaxed text-ink-soft">
-                                — {remark}
-                              </span>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-
-                  {(o.subjects || []).length > 0 && (
-                    <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-faint">
-                      {o.subjects.map((s, i) => (
-                        <li key={`${s.subject}-${i}`}>
-                          <span className="text-ink-soft">{s.subject}</span>
-                          {s.understanding ? ` · ${s.understanding}` : ''}
-                          {s.engagement ? ` · ${s.engagement}` : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {confirming === o.id && (
-                    <div className="kc-fade mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-alert/30 bg-alert/10 px-4 py-3">
-                      <p className="text-sm text-alert">
-                        Delete this observation? The profile will be rebuilt
-                        without it.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => remove(o.id)}
-                        className="rounded-full bg-alert px-4 py-1.5 text-sm font-semibold text-white"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirming(null)}
-                        className="rounded-full border border-line px-4 py-1.5 text-sm font-medium text-ink-soft"
-                      >
-                        Keep it
-                      </button>
-                    </div>
-                  )}
-                </article>
-              </li>
+                <p className="mt-2 text-xs text-ink-soft">
+                  {d.level?.gloss || 'No observations have touched this domain yet.'}
+                </p>
+                <p className="mt-1.5 text-2xs text-ink-faint">{d.blurb}</p>
+              </Card>
             ))}
-          </ol>
-        ) : (
-          <p className="rounded-2xl border border-dashed border-line px-5 py-12 text-center text-sm text-ink-faint">
-            {observations.length
-              ? 'Nothing matches those filters.'
-              : `No observations yet for ${student.name.split(' ')[0]}.`}
-          </p>
-        )}
-      </section>
-    </AppShell>
-  )
-}
+          </div>
 
-function Select({ value, onChange, label, options }) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-full border border-line bg-paper px-3 py-2 text-sm text-ink-soft outline-none focus:border-moss"
-    >
-      <option value="">{label}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+          {(student.selfAssessments || []).length > 0 && (
+            <Card>
+              <CardHead eyebrow="In their own words" title={`What ${first} says`} />
+              <ul className="space-y-3">
+                {student.selfAssessments.map((s, i) => (
+                  <li key={s.id || i} className="rounded-[12px] border border-line p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge tone="outline">{s.period}</Badge>
+                      {s.feeling && <Badge tone="moss">{s.feeling}</Badge>}
+                    </div>
+                    {s.enjoyed && (
+                      <p className="text-sm text-ink">
+                        <span className="kc-eyebrow mr-1.5">Enjoyed</span>
+                        {s.enjoyed}
+                      </p>
+                    )}
+                    {s.hard && (
+                      <p className="mt-1 text-sm text-ink">
+                        <span className="kc-eyebrow mr-1.5">Hard</span>
+                        {s.hard}
+                      </p>
+                    )}
+                    {(s.want_next || s.wantNext) && (
+                      <p className="mt-1 text-sm text-ink">
+                        <span className="kc-eyebrow mr-1.5">Wants</span>
+                        {s.want_next || s.wantNext}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {(student.parentNotes || []).length > 0 && (
+            <Card>
+              <CardHead eyebrow="Family voice" title="What home says" />
+              <ul className="space-y-2">
+                {student.parentNotes.map((n, i) => (
+                  <li key={i} className="rounded-[10px] bg-paper-2/60 p-3 text-sm text-ink-soft">
+                    {n.body}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab: timeline ─────────────────────────────────── */}
+      {tab === 'timeline' && (
+        <div className="space-y-3">
+          {sorted.length ? (
+            sorted.map((o) => (
+              <ObservationRow key={o.id} obs={o} studentId={student.id} />
+            ))
+          ) : (
+            <EmptyState
+              icon={Feather}
+              title="Nothing recorded yet"
+              body={`Add the first observation of ${first}, or run a class sweep and pick them up with everyone else.`}
+              action={
+                <Button
+                  as={Link}
+                  to={`/teacher/student/${student.id}/observe`}
+                  variant="primary"
+                  icon={Plus}
+                >
+                  New observation
+                </Button>
+              }
+            />
+          )}
+        </div>
+      )}
+
+      <SelfAssessmentModal
+        open={selfOpen}
+        onClose={() => setSelfOpen(false)}
+        student={student}
+        onDone={() => setToast({ message: 'Saved in their words.' })}
+      />
+      <Toast toast={toast} />
+    </AppShell>
   )
 }

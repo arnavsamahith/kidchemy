@@ -4,7 +4,7 @@ const W = 420
 const H = 330
 const CX = W / 2
 const CY = H / 2
-const R = 108
+const R = 104
 
 function pointAt(i, total, radius) {
   const angle = (Math.PI * 2 * i) / total - Math.PI / 2
@@ -19,10 +19,10 @@ export default function StrengthMap({ dims }) {
     .join(' ')
 
   return (
-    <div className="grid gap-8 md:grid-cols-[360px_1fr] md:items-start">
+    <div className="grid gap-8 md:grid-cols-[340px_1fr] md:items-start">
       <div className="mx-auto w-full max-w-[380px]">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img"
-          aria-label="Observed strengths across seven dimensions">
+          aria-label={`Observed strengths across ${total} dimensions`}>
           {[0.25, 0.5, 0.75, 1].map((f) => (
             <polygon
               key={f}
@@ -64,7 +64,7 @@ export default function StrengthMap({ dims }) {
                 cx={x}
                 cy={y}
                 r={active === d.id ? 6 : 4}
-                fill={active === d.id ? 'var(--color-clay)' : 'var(--color-moss)'}
+                fill={active === d.id ? 'var(--color-accent)' : 'var(--color-moss)'}
               />
             )
           })}
@@ -79,7 +79,7 @@ export default function StrengthMap({ dims }) {
                 dominantBaseline="middle"
                 fontSize="11"
                 fontWeight="600"
-                fill={active === d.id ? 'var(--color-clay)' : 'var(--color-ink-soft)'}
+                fill={active === d.id ? 'var(--color-accent)' : 'var(--color-ink-soft)'}
               >
                 {d.label}
               </text>
@@ -97,15 +97,15 @@ export default function StrengthMap({ dims }) {
               onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(d.id)}
               onBlur={() => setActive(null)}
-              className={`w-full rounded-2xl border p-4 text-left transition ${
+              className={`w-full rounded-[14px] border p-4 text-left transition ${
                 active === d.id
-                  ? 'border-clay bg-clay-tint'
-                  : 'border-line bg-white/60'
+                  ? 'border-accent bg-accent-tint'
+                  : 'border-line bg-card'
               }`}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <span className="font-semibold text-ink">{d.label}</span>
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+                <span className="kc-eyebrow">
                   {d.band}
                 </span>
               </div>

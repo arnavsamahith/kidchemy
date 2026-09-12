@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 // Config comes from env vars when present (Vercel / .env.local) and falls
 // back to the pilot project so `npm run dev` works with no setup. The
-// publishable key is safe to ship — RLS is what protects the data.
+// publishable key is safe to ship: RLS is what protects the data.
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL || 'https://zesfwfcpdpmxuhsvqvxu.supabase.co'
 const SUPABASE_KEY =
@@ -18,52 +18,101 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 })
 
 /* ══════════════════════════════════════════════════════════════════
+   Row mapping
+   The database is snake_case, the app is camelCase. One place for it.
+   ══════════════════════════════════════════════════════════════════ */
+
+function fromStudentRow(s) {
+  return {
+    ...s,
+    className: s.class_name,
+    accessCode: s.access_code,
+    studentCode: s.student_code,
+    rollNo: s.roll_no,
+    grade: s.grade,
+    section: s.section,
+    archived: Boolean(s.archived),
+  }
+}
+
+function toStudentRow(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    student_code: s.studentCode || null,
+    grade: Number.isFinite(Number(s.grade)) ? Number(s.grade) : null,
+    section: s.section || null,
+    roll_no: Number.isFinite(Number(s.rollNo)) ? Number(s.rollNo) : null,
+    class_name: s.className || null,
+    school: s.school || null,
+    frequency: s.frequency || 'Weekly',
+    access_code: s.accessCode || null,
+    archived: Boolean(s.archived),
+  }
+}
+
+function fromObsRow(o, insights = []) {
+  return {
+    ...o,
+    studentId: o.student_id,
+    tagNotes: o.tag_notes || {},
+    story: o.story || {},
+    dispositions: o.dispositions || [],
+    concentrationMinutes: o.concentration_minutes,
+    selfChosen: Boolean(o.self_chosen),
+    artefactUrl: o.artefact_url || '',
+    subjects: insights
+      .filter((i) => i.observation_id === o.id)
+      .map(({ id, observation_id, ...rest }) => rest),
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    Reads
-   RLS does the scoping: a teacher gets the class, a parent gets their
-   own child's shared observations, and nobody gets anything signed out.
+   RLS does the scoping: a teacher gets the class, a parent gets their own
+   child's shared observations, and nobody gets anything signed out.
    ══════════════════════════════════════════════════════════════════ */
 
 export async function loadStudents() {
   const { data: students, error: sErr } = await supabase
     .from('students')
     .select('*')
-    .order('name')
+    .order('grade', { ascending: true })
+    .order('section', { ascending: true })
+    .order('roll_no', { ascending: true })
   if (sErr) throw sErr
   if (!students?.length) return []
 
   const ids = students.map((s) => s.id)
 
-  const { data: observations, error: oErr } = await supabase
-    .from('observations')
-    .select('*')
-    .in('student_id', ids)
-    .order('date')
-  if (oErr) throw oErr
+  const [obsRes, selfRes, parentRes] = await Promise.all([
+    supabase.from('observations').select('*').in('student_id', ids).order('date'),
+    supabase.from('self_assessments').select('*').in('student_id', ids),
+    supabase.from('parent_notes').select('*').in('student_id', ids),
+  ])
+  if (obsRes.error) throw obsRes.error
 
-  const obsIds = (observations || []).map((o) => o.id)
+  const observations = obsRes.data || []
+  const obsIds = observations.map((o) => o.id)
   let insights = []
   if (obsIds.length) {
-    const { data, error: iErr } = await supabase
+    const { data, error } = await supabase
       .from('subject_insights')
       .select('*')
       .in('observation_id', obsIds)
-    if (iErr) throw iErr
+    if (error) throw error
     insights = data || []
   }
 
-  const obsWithSubjects = (observations || []).map((o) => ({
-    ...o,
-    tagNotes: o.tag_notes || {},
-    subjects: insights
-      .filter((i) => i.observation_id === o.id)
-      .map(({ id, observation_id, ...rest }) => rest),
-  }))
+  const mapped = observations.map((o) => fromObsRow(o, insights))
+  const selfRows = selfRes.error ? [] : selfRes.data || []
+  const parentRows = parentRes.error ? [] : parentRes.data || []
 
   return students.map((s) => ({
-    ...s,
-    className: s.class_name,
-    accessCode: s.access_code,
-    observations: obsWithSubjects.filter((o) => o.student_id === s.id),
+    ...fromStudentRow(s),
+    observations: mapped.filter((o) => o.student_id === s.id),
+    selfAssessments: selfRows.filter((r) => r.student_id === s.id),
+    parentNotes: parentRows.filter((r) => r.student_id === s.id),
   }))
 }
 
@@ -82,6 +131,11 @@ function obsRow(studentId, observation) {
     milestone,
     visibility = 'shared',
     tagNotes = {},
+    story = {},
+    dispositions = [],
+    concentrationMinutes,
+    selfChosen,
+    artefactUrl,
   } = observation
 
   // Only keep remarks whose tag is still selected and whose text is real.
@@ -91,6 +145,12 @@ function obsRow(studentId, observation) {
       .map(([tagId, text]) => [tagId, text.trim()])
   )
 
+  const cleanStory = Object.fromEntries(
+    Object.entries(story || {})
+      .filter(([, v]) => typeof v === 'string' && v.trim())
+      .map(([k, v]) => [k, v.trim()])
+  )
+
   return {
     id,
     student_id: studentId,
@@ -98,10 +158,17 @@ function obsRow(studentId, observation) {
     date,
     teacher,
     tags,
-    note,
+    note: note || null,
     milestone: milestone || null,
     visibility,
     tag_notes: cleanNotes,
+    story: cleanStory,
+    dispositions,
+    concentration_minutes: Number.isFinite(Number(concentrationMinutes))
+      ? Number(concentrationMinutes)
+      : null,
+    self_chosen: Boolean(selfChosen),
+    artefact_url: artefactUrl || null,
   }
 }
 
@@ -150,15 +217,176 @@ export async function persistFrequency(studentId, frequency) {
 }
 
 export async function persistStudent(student) {
-  const { error } = await supabase.from('students').upsert({
-    id: student.id,
-    name: student.name,
-    class_name: student.className,
-    school: student.school,
-    frequency: student.frequency || 'Weekly',
-    access_code: student.accessCode || null,
+  const { error } = await supabase.from('students').upsert(toStudentRow(student))
+  if (error) throw error
+}
+
+/** Roster import. Chunked so a 600-child school does not time out. */
+export async function persistStudents(students = []) {
+  const rows = students.map(toStudentRow)
+  for (let i = 0; i < rows.length; i += 100) {
+    const { error } = await supabase
+      .from('students')
+      .upsert(rows.slice(i, i + 100), { onConflict: 'id' })
+    if (error) throw error
+  }
+  return rows.length
+}
+
+export async function archiveStudent(studentId, archived = true) {
+  const { error } = await supabase
+    .from('students')
+    .update({ archived })
+    .eq('id', studentId)
+  if (error) throw error
+}
+
+/* ── The multi-stakeholder half of the HPC ──────────────────────── */
+
+export async function persistSelfAssessment(studentId, row) {
+  const { error } = await supabase.from('self_assessments').upsert({
+    id: row.id,
+    student_id: studentId,
+    period: row.period,
+    date: row.date,
+    enjoyed: row.enjoyed || null,
+    hard: row.hard || null,
+    want_next: row.wantNext || null,
+    feeling: row.feeling || null,
   })
   if (error) throw error
+}
+
+export async function persistPeerAssessment(studentId, row) {
+  const { error } = await supabase.from('peer_assessments').insert({
+    student_id: studentId,
+    period: row.period,
+    author_id: row.authorId || null,
+    appreciation: row.appreciation || null,
+    tag: row.tag || null,
+  })
+  if (error) throw error
+}
+
+export async function loadPeerAssessments(studentIds = []) {
+  if (!studentIds.length) return []
+  const { data, error } = await supabase
+    .from('peer_assessments')
+    .select('*')
+    .in('student_id', studentIds)
+  if (error) return []
+  return data || []
+}
+
+export async function persistParentNote(studentId, parentId, period, body) {
+  const { error } = await supabase.from('parent_notes').insert({
+    student_id: studentId,
+    parent_id: parentId,
+    period,
+    body,
+  })
+  if (error) throw error
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Admin
+   ══════════════════════════════════════════════════════════════════ */
+
+export async function loadSettings() {
+  const { data, error } = await supabase.from('app_settings').select('*')
+  if (error) return {}
+  return Object.fromEntries((data || []).map((r) => [r.key, r.value]))
+}
+
+export async function saveSetting(key, value) {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key, value, updated_at: new Date().toISOString() })
+  if (error) throw error
+}
+
+export async function loadProfiles() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function setUserRole(email, role) {
+  const { data, error } = await supabase.rpc('kc_set_role', {
+    target_email: email.trim(),
+    new_role: role,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function loadTeacherCodes() {
+  const { data, error } = await supabase.from('teacher_codes').select('*')
+  if (error) throw error
+  return data || []
+}
+
+export async function saveTeacherCode(row) {
+  const { error } = await supabase.from('teacher_codes').upsert({
+    code: row.code.trim().toUpperCase(),
+    school: row.school || null,
+    class_name: row.className || null,
+    grade: Number.isFinite(Number(row.grade)) ? Number(row.grade) : null,
+    section: row.section || null,
+    uses_left: Number.isFinite(Number(row.usesLeft)) ? Number(row.usesLeft) : null,
+    expires_at: row.expiresAt || null,
+  })
+  if (error) throw error
+}
+
+export async function deleteTeacherCode(code) {
+  const { error } = await supabase.from('teacher_codes').delete().eq('code', code)
+  if (error) throw error
+}
+
+export async function loadSchools() {
+  const { data, error } = await supabase.from('schools').select('*').order('name')
+  if (error) throw error
+  return data || []
+}
+
+export async function saveSchool(row) {
+  const { error } = await supabase.from('schools').upsert({
+    id: row.id,
+    name: row.name,
+    city: row.city || null,
+    class_name: row.className || null,
+    teacher: row.teacher || null,
+  })
+  if (error) throw error
+}
+
+export async function loadAuditLog(limit = 200) {
+  const { data, error } = await supabase
+    .from('audit_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data || []
+}
+
+export async function writeAudit(action, entity, entityId, detail = {}) {
+  try {
+    const { data } = await supabase.auth.getUser()
+    await supabase.from('audit_log').insert({
+      actor_id: data?.user?.id || null,
+      action,
+      entity,
+      entity_id: entityId ? String(entityId) : null,
+      detail,
+    })
+  } catch {
+    // Audit is best effort. Never block the teacher's work on it.
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════

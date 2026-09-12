@@ -1,18 +1,18 @@
-# Pehchaan — Child Profile Platform
+# Pehchaan, Child Profile Platform
 ## Complete Product Brief + Build Prompt
 
 ---
 
 ## WHY THIS EXISTS
 
-The Indian education system — and most education systems globally — reduces every child to a single number: a grade, a rank, a percentage. A child who scores 58% in Science is labeled "weak in Science." But that same child might have extraordinary observational skills, ask the best questions in class, or understand concepts deeply but struggle to express them in an exam format.
+The Indian education system, and most education systems globally, reduces every child to a single number: a grade, a rank, a percentage. A child who scores 58% in Science is labeled "weak in Science." But that same child might have extraordinary observational skills, ask the best questions in class, or understand concepts deeply but struggle to express them in an exam format.
 
 Report cards, as they exist today, do one thing: they compare every child to the same benchmark and assign a rank. They tell you where a child stands. They say nothing about *who* the child is, how they think, what they're good at, or where they could go.
 
 This is a problem for three people:
 
 - **The student**, who internalizes a number as their identity
-- **The parent**, who has no real insight into their child's mind — only a scorecard — and defaults to chasing marks
+- **The parent**, who has no real insight into their child's mind, only a scorecard, and defaults to chasing marks
 - **The teacher**, who observes rich, nuanced things about each child every day but has no structured way to communicate them
 
 The result: parents coach grades. Schools rank children. And an entire generation of kids grows up believing they are their score.
@@ -21,16 +21,16 @@ The result: parents coach grades. Schools rank children. And an entire generatio
 
 ## WHAT WE'RE BUILDING
 
-**Pehchaan** is a living child profile platform — a layer on top of the existing school system that captures what a child *actually is*, not just what they scored.
+**Pehchaan** is a living child profile platform, a layer on top of the existing school system that captures what a child *actually is*, not just what they scored.
 
 It works like this:
 
-- Teachers observe their students and fill in structured, lightweight observations — not essays, not long forms. Quick tags, short notes, a few taps.
-- The platform aggregates these observations over time into a **rich, multi-dimensional profile** for each child — showing strengths, learning style, growth trajectory, and potential pathways.
-- Parents access this profile — beautifully designed, written in plain language — via a **QR code printed on the physical report card** (or directly on the platform). No replacement of existing systems. Pure augmentation.
-- The profile grows with the child — weekly, monthly, or per-term depending on what the teacher chooses.
+- Teachers observe their students and fill in structured, lightweight observations, not essays, not long forms. Quick tags, short notes, a few taps.
+- The platform aggregates these observations over time into a **rich, multi-dimensional profile** for each child, showing strengths, learning style, growth trajectory, and potential pathways.
+- Parents access this profile, beautifully designed, written in plain language, via a **QR code printed on the physical report card** (or directly on the platform). No replacement of existing systems. Pure augmentation.
+- The profile grows with the child, weekly, monthly, or per-term depending on what the teacher chooses.
 
-The goal is not to replace grades. It is to make grades irrelevant to a child's sense of self, and to give every stakeholder — student, parent, teacher — a more truthful picture.
+The goal is not to replace grades. It is to make grades irrelevant to a child's sense of self, and to give every stakeholder, student, parent, teacher, a more truthful picture.
 
 ---
 
@@ -63,38 +63,38 @@ The teacher's workspace. Simple, fast, built for a busy classroom.
 - Engagement level: High / Medium / Low
 - One sentence on what they did well / what to focus on next
 
-**Frequency:** Teacher chooses — Daily quick log / Weekly summary / Monthly report / Per term
+**Frequency:** Teacher chooses, Daily quick log / Weekly summary / Monthly report / Per term
 
 ---
 
 ### 2. Child Profile (Parent View)
-The parent-facing profile. Warm, beautiful, written in plain language. Not a dashboard of metrics — a *portrait* of their child.
+The parent-facing profile. Warm, beautiful, written in plain language. Not a dashboard of metrics, a *portrait* of their child.
 
 **Sections:**
 
 **"Who [Child Name] is"**
 An AI-generated narrative paragraph synthesizing teacher observations:
-> "Aryan is a curious, independent thinker who tends to approach problems from unusual angles. He's at his best when given room to explore — structured tasks with a single right answer don't show his real ability. He has a natural gift for making connections between ideas."
+> "Aryan is a curious, independent thinker who tends to approach problems from unusual angles. He's at his best when given room to explore, structured tasks with a single right answer don't show his real ability. He has a natural gift for making connections between ideas."
 
 **"What [Child Name] is good at"**
-Visual skill map — not scores, but observed strengths plotted across dimensions: Creativity, Logic, Communication, Curiosity, Collaboration, Persistence, Empathy. Each dimension has a short explanation, not just a bar.
+Visual skill map, not scores, but observed strengths plotted across dimensions: Creativity, Logic, Communication, Curiosity, Collaboration, Persistence, Empathy. Each dimension has a short explanation, not just a bar.
 
 **"How [Child Name] learns best"**
 Learning style insights: Does this child need to see something to understand it? Do they need to try it themselves? Do they learn by explaining it to others?
-> "Aryan learns best by doing. Abstract explanations don't stick — but give him a physical example or a real scenario and he grasps it immediately. At home, try explaining concepts through real-world examples."
+> "Aryan learns best by doing. Abstract explanations don't stick, but give him a physical example or a real scenario and he grasps it immediately. At home, try explaining concepts through real-world examples."
 
 **"How [Child Name] is growing"**
-Timeline of growth across terms — not academic scores, but observable growth in key dimensions. Shows trajectory, not just current state.
+Timeline of growth across terms, not academic scores, but observable growth in key dimensions. Shows trajectory, not just current state.
 > "Aryan's confidence in speaking up has grown significantly since Term 1. His curiosity score has increased every term."
 
 **"Where [Child Name] could go"**
 Pathway suggestions based on observed strengths and interests:
-> "Children who think like Aryan — spatial, hands-on, pattern-oriented — often thrive in fields like engineering, architecture, industrial design, or entrepreneurship. Here's what that could look like from Class 7 onward."
+> "Children who think like Aryan, spatial, hands-on, pattern-oriented, often thrive in fields like engineering, architecture, industrial design, or entrepreneurship. Here's what that could look like from Class 7 onward."
 Concrete, age-appropriate, not prescriptive. Presented as possibilities, not prophecies.
 
 **"What you can do this month" (Parent Action Layer)**
 3 specific, practical things a parent can do at home based on current observations:
-- "Ask Aryan to explain his homework to you instead of checking if it's right — he learns by teaching"
+- "Ask Aryan to explain his homework to you instead of checking if it's right, he learns by teaching"
 - "Let him take apart something broken at home and try to fix it"
 - "Watch a documentary together about how things are made"
 
@@ -119,7 +119,7 @@ Every school that uses Pehchaan gets a QR sticker / print template that goes on 
 For school administrators:
 - See all children across all classrooms
 - Track which teachers have completed observations
-- Aggregate class-level insights (anonymized): "30% of Class 6 students show low engagement in Mathematics — possible curriculum gap"
+- Aggregate class-level insights (anonymized): "30% of Class 6 students show low engagement in Mathematics, possible curriculum gap"
 - Export profiles as PDFs for parent-teacher meetings
 
 ---
@@ -162,13 +162,13 @@ The product should feel nothing like a school management system or an edtech das
 - Think: Notion's calm + Duolingo's warmth + a beautifully designed annual report
 - Each child's profile should feel like a *portrait*, not a record
 - Typography: a warm humanist sans for body, a slightly expressive display face for headings
-- Color: warm off-whites, earthy greens, a single human accent color — not blues and grays
+- Color: warm off-whites, earthy greens, a single human accent color, not blues and grays
 - No stock illustrations of children. Abstract shapes, botanical motifs, or hand-drawn-feeling icons instead.
 
 **UX principles:**
 - Teacher flow: under 3 minutes to complete an observation
 - Parent flow: under 2 minutes to feel something real about their child
-- Mobile-first — most Indian parents and teachers access everything on mobile
+- Mobile-first, most Indian parents and teachers access everything on mobile
 - Works on slow connections
 
 ---
@@ -182,9 +182,9 @@ Paste this into a fresh Claude Pro session:
 ---
 
 ```
-I want to build a web platform called Pehchaan — a child profile platform for schools.
+I want to build a web platform called Pehchaan, a child profile platform for schools.
 
-The core idea: teachers fill in lightweight observations about each student, and parents see a beautiful, human profile of their child — not grades, but insights about who their child is, how they learn, what they're good at, and where they could go.
+The core idea: teachers fill in lightweight observations about each student, and parents see a beautiful, human profile of their child, not grades, but insights about who their child is, how they learn, what they're good at, and where they could go.
 
 It's designed to sit alongside the existing report card system (parents access it via a QR code on the physical report card), not replace it.
 
@@ -237,7 +237,7 @@ It should include these sections:
 Child's name, class, school. A warm greeting: "Here's who [Name] is this term."
 
 **2. "Who [Name] is"**
-An AI-synthesized paragraph (you can mock this for now with a static example) describing the child based on the tags filled in. Warm, human, written like a letter — not a report.
+An AI-synthesized paragraph (you can mock this for now with a static example) describing the child based on the tags filled in. Warm, human, written like a letter, not a report.
 
 **3. Strength Map**
 A visual representation (radar/spider chart or a set of illustrated dimension cards) of key dimensions:
@@ -277,11 +277,11 @@ Example: "Children who think like [Name] often thrive in fields like design, eng
 This should NOT look like a school management system or edtech dashboard.
 
 - Warm color palette: off-white background (#FAF8F4), earthy green accent (#4A7C59), warm clay secondary (#C17B4E), dark charcoal text (#1C1C1C)
-- Typography: use Google Fonts — "DM Serif Display" for headings, "Inter" for body
+- Typography: use Google Fonts, "DM Serif Display" for headings, "Inter" for body
 - Rounded cards, generous whitespace, no harsh borders
 - The profile page should feel like reading a beautiful letter about your child, not looking at a report
 - Icons: use Lucide React
-- No stock illustrations — use simple geometric or botanical-inspired SVG shapes as decorative elements
+- No stock illustrations, use simple geometric or botanical-inspired SVG shapes as decorative elements
 
 ---
 
@@ -298,28 +298,28 @@ Each should have some pre-filled observations so the parent profile view shows r
 
 ---
 
-Build the full MVP. Start with the component structure, then build teacher view, then parent profile view. Make it feel genuinely beautiful — this is a product parents will judge in the first 10 seconds of opening it.
+Build the full MVP. Start with the component structure, then build teacher view, then parent profile view. Make it feel genuinely beautiful, this is a product parents will judge in the first 10 seconds of opening it.
 ```
 
 ---
 
 ## HOW TO GO ABOUT BUILDING THIS (ROADMAP)
 
-### Week 1 — MVP
+### Week 1, MVP
 Build the above. Get it working locally. Show it to 3 teachers and 3 parents you know. Watch their faces, not their words.
 
-### Week 2 — First School
+### Week 2, First School
 Find one school principal in your network (IITM alumni network, family connections, anyone). Show them the demo. Ask if you can run a pilot with one class (30 students, one teacher). Do it for free.
 
-### Week 3-4 — Iterate on Feedback
+### Week 3-4, Iterate on Feedback
 The teacher input flow will be too long. Cut it. The parent profile will miss something emotional. Add it. The pathway section will feel generic. Make it specific.
 
-### Month 2 — The QR Moment
+### Month 2, The QR Moment
 Design the physical QR sticker. Work with the school to put it on actual report cards at the next parent-teacher meeting. Watch parents scan it in real time. That moment will tell you everything.
 
-### Month 3 — Expand
+### Month 3, Expand
 Second school. Third. Start charging school #3. Use the first two as case studies.
 
-### 6 Months — The Real Product
+### 6 Months, The Real Product
 By now you know what teachers actually fill in (vs what you designed), what parents actually read (vs what you built), and what the hardest part of the problem really is. Build that.
 ```

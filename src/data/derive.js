@@ -1,25 +1,45 @@
 // Synthesis layer: turns a pile of teacher taps into a portrait.
 //
-// Everything here is deterministic and rule-based on purpose. It is the
-// scaffolding an LLM would later replace for *prose only* — the dimensions,
-// evidence counts and pathway ranking should stay rule-based so a teacher can
-// always be shown exactly why the profile says what it says.
+// Deterministic and rule-based on purpose. It is the scaffolding an LLM would
+// later replace for prose only. Dimensions, evidence counts and rankings stay
+// rule-based so a teacher can always be shown exactly why the profile says
+// what it says.
+//
+// Every phrase in here obeys the language guard in pedagogy.js: verbs and
+// conditions, never fixed traits. See docs/PEDAGOGY.md.
 
 import {
   DIMENSIONS,
   DIMENSION_MAP,
   TAG_MAP,
   MILESTONE_MAP,
+  WATCH_RESPONSES,
   PERIODS,
 } from './taxonomy.js'
 
+import {
+  CONDITIONS,
+  DISPOSITIONS,
+  DISPOSITION_MAP,
+  HPC_DOMAINS,
+  HPC_LEVELS,
+  nextStepFor,
+  showsCareerPathways,
+} from './pedagogy.js'
+
 const K = 6 // evidence needed before a dimension reads as fully established
+
+/* ══════════════════════════════════════════════════════════════════
+   Aggregation
+   ══════════════════════════════════════════════════════════════════ */
 
 export function aggregate(observations = []) {
   const weights = {}
   const tagCounts = {}
-  const styleCounts = {}
+  const conditionCounts = {}
+  const watchCounts = {}
   const milestoneCounts = {}
+  const dispositionCounts = {}
   DIMENSIONS.forEach((d) => (weights[d.id] = 0))
 
   observations.forEach((obs) => {
@@ -27,21 +47,38 @@ export function aggregate(observations = []) {
       const tag = TAG_MAP[tagId]
       if (!tag) return
       tagCounts[tagId] = (tagCounts[tagId] || 0) + 1
-      if (tag.style) styleCounts[tag.style] = (styleCounts[tag.style] || 0) + 1
+      if (tag.condition)
+        conditionCounts[tag.condition] = (conditionCounts[tag.condition] || 0) + 1
+      if (tag.watch) watchCounts[tag.watch] = (watchCounts[tag.watch] || 0) + 1
       Object.entries(tag.dims || {}).forEach(([dim, w]) => {
         weights[dim] = (weights[dim] || 0) + w
       })
     })
+    ;(obs.dispositions || []).forEach((d) => {
+      dispositionCounts[d] = (dispositionCounts[d] || 0) + 1
+    })
     if (obs.milestone) {
       milestoneCounts[obs.milestone] = (milestoneCounts[obs.milestone] || 0) + 1
     }
+    // A recorded stretch of self-chosen concentration is Montessori's key
+    // signal, and counts toward involvement.
+    if (Number(obs.concentrationMinutes) >= 10 && obs.selfChosen) {
+      dispositionCounts.involvement = (dispositionCounts.involvement || 0) + 1
+    }
   })
 
-  return { weights, tagCounts, styleCounts, milestoneCounts }
+  return {
+    weights,
+    tagCounts,
+    conditionCounts,
+    watchCounts,
+    milestoneCounts,
+    dispositionCounts,
+  }
 }
 
 // Diminishing returns: one tap is a hint, five taps is a pattern.
-// Never reaches 100 — nothing about a child is ever finished.
+// Never reaches 100, because nothing about a child is ever finished.
 function toScore(weight) {
   if (!weight) return 0
   return Math.round(100 * (1 - Math.exp(-weight / K)))
@@ -73,243 +110,377 @@ export function topDimensions(observations, n = 3) {
     .slice(0, n)
 }
 
-/* ------------------------------------------------------------------ */
-/* Phrase banks                                                        */
-/* ------------------------------------------------------------------ */
+/* ══════════════════════════════════════════════════════════════════
+   Dispositions (Carr). How a child meets learning.
+   ══════════════════════════════════════════════════════════════════ */
+
+export function dispositionScores(observations = []) {
+  const { dispositionCounts } = aggregate(observations)
+  const total = observations.length || 1
+  return DISPOSITIONS.map((d) => {
+    const count = dispositionCounts[d.id] || 0
+    return {
+      ...d,
+      count,
+      share: Math.round((count / total) * 100),
+      band: count === 0 ? 'Not yet noted' : count < 3 ? 'Noticed' : 'Reliably there',
+    }
+  })
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HPC rollup. Five NEP 2020 domains, from the same taps.
+   ══════════════════════════════════════════════════════════════════ */
+
+export function hpcDomains(observations = []) {
+  const dims = dimensionScores(observations)
+  const disp = dispositionScores(observations)
+
+  return HPC_DOMAINS.map((domain) => {
+    const contributing = dims.filter((d) => d.hpc === domain.id)
+    const dispContributing = disp.filter((d) => d.hpc === domain.id)
+    const observed = contributing.filter((d) => d.score > 0)
+    const score = observed.length
+      ? Math.round(observed.reduce((s, d) => s + d.score, 0) / observed.length)
+      : 0
+    const evidenceCount =
+      contributing.reduce((s, d) => s + d.evidence.reduce((t, e) => t + e.count, 0), 0) +
+      dispContributing.reduce((s, d) => s + d.count, 0)
+
+    const level =
+      score === 0 ? null : score >= 62 ? HPC_LEVELS[2] : score >= 30 ? HPC_LEVELS[1] : HPC_LEVELS[0]
+
+    return {
+      ...domain,
+      score,
+      level,
+      evidenceCount,
+      dimensions: contributing,
+      dispositions: dispContributing,
+    }
+  })
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Phrase banks
+   Verbs and conditions. No fixed-trait constructions anywhere.
+   ══════════════════════════════════════════════════════════════════ */
 
 const OPENERS = {
   curiosity: 'follows a question further than it was asked',
   logic: 'wants to know why something works, not only that it does',
-  creativity: 'reaches for the second answer once the first one is found',
+  creativity: 'reaches for a second answer once the first one is found',
   communication: 'thinks out loud, and thinks better for it',
   collaboration: 'does their best thinking with other people in the room',
   persistence: 'stays with a hard thing long after it stops being fun',
   empathy: 'notices the person before the problem',
+  body: 'works out what something is by handling it',
 }
 
 const SECOND = {
-  curiosity: 'Curiosity is the engine here — interest arrives before effort does.',
+  curiosity: 'Interest tends to arrive before effort does, and it carries the effort with it.',
   logic: 'Given a structure to hold on to, the reasoning comes fast and clean.',
-  creativity: 'Open-ended work is where the real ability shows; a single-right-answer task hides it.',
+  creativity: 'Open-ended work is where the real ability shows. A single-right-answer task hides it.',
   communication: 'Ideas land better out loud than on paper, and that is worth protecting.',
-  collaboration: 'Being useful to the group is part of how the learning happens.',
-  persistence: 'Difficulty is not a deterrent — it is often the point.',
+  collaboration: 'Being useful to the group is part of how the learning happens here.',
+  persistence: 'Difficulty is not a deterrent. It is often the point.',
   empathy: 'The social temperature of a room registers, and it shapes the work.',
-}
-
-const LEARNING_STYLE = {
-  kinesthetic:
-    'learns with their hands. Abstract explanation slides off; a physical example, a model, or a thing to take apart makes it stick.',
-  reflective:
-    'is a slow-burn processor — not slower to understand, slower to speak. The answer is usually already forming; it needs a beat of silence to arrive.',
-  independent:
-    'thinks best with room and quiet. Group work is fine, but the original idea usually shows up alone.',
-  encouragement:
-    'starts carefully. A first small win early in a task changes the whole shape of what follows.',
-}
-
-const DIM_STYLE = {
-  curiosity:
-    'learns by chasing something. Start from a question they already care about and the syllabus follows.',
-  logic:
-    'learns by seeing the structure. Show the shape of a problem before the details and it clicks.',
-  creativity:
-    'learns by making. Give the concept a form — a drawing, a build, a story — and it stays.',
-  communication:
-    'learns by explaining. If they can teach it back to you, they own it.',
-  collaboration:
-    'learns in company. Understanding gets built in conversation, not in silence.',
-  persistence:
-    'learns by repetition and grit. Hard problems are the teaching tool, not the test.',
-  empathy:
-    'learns through people and stories. Give a concept a human stake and it holds.',
-}
-
-const PARENT_ACTIONS = {
-  curiosity: [
-    'Answer one “why” question this week with “I don’t know — let’s find out” and actually go find out together.',
-    'Let one question at dinner run for ten minutes without steering it back to studies.',
-  ],
-  logic: [
-    'Play something with rules and no luck — chess, Set, a logic puzzle book. Fifteen minutes, twice a week.',
-    'Ask them to explain how something at home works: the fridge, the fan regulator, the water bill.',
-  ],
-  creativity: [
-    'Give them something broken and permission to open it. No requirement to fix it.',
-    'Ask for a second solution after they give you the first one, even when the first one is right.',
-  ],
-  communication: [
-    'Ask them to teach you their homework instead of checking whether it is correct.',
-    'Give them one real thing to negotiate this month — the weekend plan, the grocery list.',
-  ],
-  collaboration: [
-    'Give them a task where someone else depends on them finishing it.',
-    'Invite one friend over for something that has to be built together, not watched together.',
-  ],
-  persistence: [
-    'Let one hard thing stay unsolved overnight instead of rescuing it.',
-    'Name the effort out loud, not the result — “you stayed with that” beats “you got it right”.',
-  ],
-  empathy: [
-    'Ask what happened to someone else at school today, not what happened to them.',
-    'Let them help with something that has no reward attached to it.',
-  ],
+  body: 'Space, tools and materials get handled with a confidence that is easy to miss on paper.',
 }
 
 const QUESTIONS = {
   curiosity: 'What did you wonder about today that nobody answered?',
-  logic: 'What is something at school that doesn’t make sense to you yet?',
+  logic: 'What is something at school that does not make sense to you yet?',
   creativity: 'What would you change about how something is done, if you could?',
   communication: 'Can you teach me the thing you learned today?',
   collaboration: 'Who did you help this week, and who helped you?',
   persistence: 'What was the hardest thing you kept trying at?',
   empathy: 'Was anyone having a bad day today? What did you do?',
+  body: 'What did you make or fix this week?',
 }
 
 const GENERIC_QUESTIONS = [
-  'What’s something you figured out by yourself this week?',
+  'What is something you figured out by yourself this week?',
   'Is there anything at school you wish was taught differently?',
-  'What do you think you’re getting better at?',
+  'What do you think you are getting better at?',
 ]
+
+/* ══════════════════════════════════════════════════════════════════
+   What to feed next. Used below Class 9 in place of careers.
+   ══════════════════════════════════════════════════════════════════ */
+
+const FEED_NEXT = [
+  {
+    id: 'build',
+    title: 'Things to build',
+    dims: { creativity: 3, body: 2, logic: 1 },
+    body: 'Kits, repairs, models, anything with a physical result and a chance of failing.',
+    tryThis:
+      'A tinkering or robotics club if the school has one, an Atal Tinkering Lab if the district does, and one broken appliance at home with permission to open it.',
+  },
+  {
+    id: 'investigate',
+    title: 'Questions to chase',
+    dims: { curiosity: 3, logic: 3, persistence: 2 },
+    body: 'One long investigation teaches more than ten short worksheets.',
+    tryThis:
+      'A science fair entry chosen for the question rather than the prize, a nature log kept for a term, or one household measurement tracked over weeks.',
+  },
+  {
+    id: 'say-it',
+    title: 'Audiences to talk to',
+    dims: { communication: 3, empathy: 2, creativity: 1 },
+    body: 'Expression improves fastest when somebody is actually listening.',
+    tryThis:
+      'Debate or MUN if it exists, a class newsletter if it does not, or reading aloud to a younger sibling twice a week.',
+  },
+  {
+    id: 'run-it',
+    title: 'Things to run',
+    dims: { collaboration: 3, communication: 2, persistence: 2 },
+    body: 'Responsibility for other people is a skill, and it needs reps.',
+    tryThis:
+      'One event, stall or team run end to end, allowed to go imperfectly, with the adults staying out of it.',
+  },
+  {
+    id: 'look-after',
+    title: 'Someone or something to look after',
+    dims: { empathy: 3, communication: 2, body: 1 },
+    body: 'Care is learned by being depended on, not by being told about.',
+    tryThis:
+      'A reading buddy in a lower class, a plant or animal that is genuinely theirs, or a weekly job the household actually needs done.',
+  },
+  {
+    id: 'go-deep',
+    title: 'One thing to go deep on',
+    dims: { persistence: 3, creativity: 2, body: 2 },
+    body: 'Depth in one pursuit teaches more than breadth across five.',
+    tryThis:
+      'Pick one thing, music, sport, code, a craft, and protect the practice hours from everything else.',
+  },
+]
+
+/* ══════════════════════════════════════════════════════════════════
+   Career pathways. Class 9 and above only, and never fewer than two.
+   ══════════════════════════════════════════════════════════════════ */
 
 const PATHWAYS = [
   {
     id: 'design-engineering',
     title: 'Making and designing things',
-    dims: { creativity: 3, logic: 2, curiosity: 1 },
-    body:
-      'Children who build first and theorise second often find their footing in engineering, product design, architecture or industrial design.',
-    next:
-      'From Class 7: a robotics or tinkering club, an Atal Tinkering Lab if the school has one, and physical model-making over worksheets.',
+    dims: { creativity: 3, logic: 2, body: 2, curiosity: 1 },
+    body: 'Building first and theorising second is the working habit of engineering, product design, architecture and industrial design.',
+    next: 'Stream-wise this points at PCM with a design or computing elective, and portfolio work alongside it.',
   },
   {
     id: 'research-science',
     title: 'Asking questions for a living',
     dims: { curiosity: 3, logic: 3, persistence: 2 },
-    body:
-      'A child who keeps asking after the answer arrives is showing the core habit of research — in the sciences, in medicine, in economics.',
-    next:
-      'From Class 7: science fairs and olympiad-style problem sets — for the questions, not the ranks. One long project beats ten short ones.',
+    body: 'Continuing to ask after the answer arrives is the core habit of research, in the sciences, in medicine, in economics.',
+    next: 'PCM or PCB depending on where the questions point, with one long project rather than many short ones.',
   },
   {
     id: 'communication-law',
     title: 'Working with words and people',
     dims: { communication: 3, empathy: 2, creativity: 1 },
-    body:
-      'Comfort in front of a room and care about how things are said points toward law, journalism, teaching, policy or the performing arts.',
-    next:
-      'From Class 7: debate, MUN, a school paper, or simply a weekly audience of one at the dinner table.',
+    body: 'Comfort in front of a room and care about how things are said points toward law, journalism, teaching, policy and the performing arts.',
+    next: 'Humanities with a language or legal studies elective, and a debating record that is actually kept.',
   },
   {
     id: 'leadership-enterprise',
     title: 'Getting people moving',
     dims: { collaboration: 3, communication: 2, persistence: 2 },
-    body:
-      'Organising other people around an idea is a distinct talent. It shows up later in entrepreneurship, management, operations and public service.',
-    next:
-      'From Class 7: let them run something end-to-end — a class event, a small sale, a team — and let it go imperfectly.',
+    body: 'Organising other people around an idea is a distinct talent. It shows up in entrepreneurship, management, operations and public service.',
+    next: 'Commerce or humanities, and something run end to end outside school that can be pointed at later.',
   },
   {
     id: 'care-people',
     title: 'Looking after people',
     dims: { empathy: 3, communication: 2, collaboration: 1 },
-    body:
-      'Reading a room before reading a page is a real skill, and an undervalued one — it leads to medicine, psychology, teaching and design research.',
-    next:
-      'From Class 7: any role with responsibility for someone younger — a reading buddy, a junior team, a neighbourhood class.',
+    body: 'Reading a room before reading a page leads to medicine, psychology, teaching and design research.',
+    next: 'PCB or humanities with psychology, and sustained volunteering rather than a single camp.',
   },
   {
     id: 'craft-mastery',
     title: 'Going deep on one thing',
-    dims: { persistence: 3, creativity: 2, logic: 1 },
-    body:
-      'A child who stays with difficulty tends to do well anywhere mastery is rewarded — music, sport, mathematics, code, any craft.',
-    next:
-      'From Class 7: pick one thing and protect the practice hours. Depth in a single pursuit teaches more than breadth across five.',
+    dims: { persistence: 3, creativity: 2, body: 2, logic: 1 },
+    body: 'Staying with difficulty pays anywhere mastery is rewarded: music, sport, mathematics, code, any craft.',
+    next: 'Whichever stream leaves the practice hours intact. The stream matters less than the hours here.',
   },
 ]
 
-/* ------------------------------------------------------------------ */
-/* Public derivations                                                  */
-/* ------------------------------------------------------------------ */
+/* ══════════════════════════════════════════════════════════════════
+   Public derivations
+   ══════════════════════════════════════════════════════════════════ */
 
 export function buildNarrative(student, observations) {
-  const first = student.name.split(' ')[0]
+  const first = String(student?.name || 'This child').split(' ')[0]
   if (!observations.length) {
-    return `${first}'s profile is still empty. Once ${first}'s teacher records a few observations, this page will fill in.`
+    return `We are still getting to know ${first}. Once a few observations are recorded, this page fills in. A thin page here means we have not seen enough yet, not that there is little to see.`
   }
   const top = topDimensions(observations, 3)
-  const { styleCounts, milestoneCounts } = aggregate(observations)
+  const { conditionCounts, milestoneCounts } = aggregate(observations)
 
   const lead = top[0]
   const parts = []
-  parts.push(
-    `${first} is a child who ${OPENERS[lead.id] || 'shows up with something of their own'}.`
-  )
-  if (top[1]) parts.push(SECOND[top[1].id])
-  if (styleCounts.reflective) {
+  if (lead) {
+    parts.push(`${first} ${OPENERS[lead.id] || 'shows up with something of their own'}.`)
+  }
+  if (top[1] && SECOND[top[1].id]) parts.push(SECOND[top[1].id])
+
+  if (conditionCounts['after-thinking-time']) {
     parts.push(
-      `Quiet in a discussion does not mean absent — ${first} tends to arrive at the answer a little after the room has moved on, and it is usually worth waiting for.`
+      `Quiet in a discussion does not mean absent. ${first} tends to arrive at the answer a little after the room has moved on, and it is usually worth waiting for.`
     )
   }
-  if (styleCounts.independent && !styleCounts.reflective) {
-    parts.push(`${first} does the original thinking alone, then brings it back.`)
+  if (conditionCounts['working-alone-first'] && !conditionCounts['after-thinking-time']) {
+    parts.push(`The original thinking happens alone, and then gets brought back.`)
   }
   if (milestoneCounts.breakthrough) {
     parts.push(
-      `There have been ${milestoneCounts.breakthrough === 1 ? 'a moment' : 'moments'} this year where something clicked visibly in class.`
+      milestoneCounts.breakthrough === 1
+        ? 'There has been a moment this year where something clicked visibly in class.'
+        : 'There have been several moments this year where something clicked visibly in class.'
     )
   }
   if (milestoneCounts.improvement) {
-    parts.push(`The direction of travel this year has been clearly upward.`)
+    parts.push('The direction of travel this year has been clearly upward.')
   }
-  const notes = observations.filter((o) => o.note && o.note.trim()).slice(-1)
-  if (notes.length) {
-    parts.push(`In their teacher's words: “${notes[0].note.trim()}”`)
+
+  const shared = observations.filter((o) => (o.visibility || 'shared') === 'shared')
+  const lastStory = [...shared].reverse().find((o) => storyText(o, 'saw'))
+  if (lastStory) {
+    parts.push(`Most recently: "${storyText(lastStory, 'saw')}"`)
   }
   return parts.join(' ')
 }
 
-export function learningStyle(student, observations) {
-  const first = student.name.split(' ')[0]
-  if (!observations.length) return null
-  const { styleCounts } = aggregate(observations)
-  const top = topDimensions(observations, 1)[0]
-  const styleKey = Object.entries(styleCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
-
-  const lines = []
-  if (styleKey && LEARNING_STYLE[styleKey]) {
-    lines.push(`${first} ${LEARNING_STYLE[styleKey]}`)
-  }
-  if (top && DIM_STYLE[top.id]) {
-    lines.push(`${lines.length ? 'They also ' : `${first} `}${DIM_STYLE[top.id]}`)
-  }
-  return lines.join(' ')
+// Observations may carry either the old freeform `note` or the new
+// Learning Story object. Read both.
+export function storyText(obs, part) {
+  if (!obs) return ''
+  if (obs.story && obs.story[part]) return String(obs.story[part]).trim()
+  if (part === 'saw' && obs.note) return String(obs.note).trim()
+  return ''
 }
 
-export function pathwaysFor(observations, n = 2) {
+export function hasStory(obs) {
+  return Boolean(
+    storyText(obs, 'saw') || storyText(obs, 'meant') || storyText(obs, 'next')
+  )
+}
+
+/**
+ * The honest replacement for "learning style". Situational, counted,
+ * revisable. Returns an array so the UI can show the evidence count.
+ */
+export function conditionsThatWork(student, observations, audience = 'parent') {
+  const first = String(student?.name || 'they').split(' ')[0]
+  const { conditionCounts } = aggregate(observations)
+  return Object.entries(conditionCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, count]) => {
+      const c = CONDITIONS[id]
+      if (!c) return null
+      return {
+        id,
+        label: c.label,
+        count,
+        advice: audience === 'teacher' ? c.teacher : `At home, ${c.parent}`,
+        subject: first,
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * ZPD next steps. One rung above where the child currently sits, on each of
+ * their strongest dimensions, with the scaffold and the fade named.
+ */
+export function nextSteps(observations, n = 3) {
+  return topDimensions(observations, n)
+    .map((d) => {
+      const step = nextStepFor(d.id, d.score)
+      if (!step) return null
+      return { ...step, label: d.label, score: d.score, band: d.band }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * Growth edges. School-only unless the teacher shared the observation.
+ */
+export function growthEdges(observations, { includeSchoolOnly = false } = {}) {
+  const source = includeSchoolOnly
+    ? observations
+    : observations.filter((o) => (o.visibility || 'shared') === 'shared')
+  const { watchCounts } = aggregate(source)
+  return Object.entries(watchCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, count]) => {
+      const r = WATCH_RESPONSES[id]
+      if (!r) return null
+      return { id, count, ...r }
+    })
+    .filter(Boolean)
+}
+
+export function feedNext(observations, n = 2) {
   const scores = Object.fromEntries(
     dimensionScores(observations).map((d) => [d.id, d.score])
   )
-  return PATHWAYS.map((p) => {
-    const fit = Object.entries(p.dims).reduce(
-      (sum, [dim, w]) => sum + w * (scores[dim] || 0),
-      0
-    )
-    return { ...p, fit }
-  })
+  return FEED_NEXT.map((p) => ({
+    ...p,
+    fit: Object.entries(p.dims).reduce((s, [dim, w]) => s + w * (scores[dim] || 0), 0),
+  }))
     .filter((p) => p.fit > 0)
     .sort((a, b) => b.fit - a.fit)
     .slice(0, n)
 }
 
+/**
+ * Careers, gated by grade. Below Class 9 this returns an empty array and the
+ * UI shows feedNext() instead. Never returns fewer than two when it returns
+ * anything, so it reads as a space rather than a verdict.
+ */
+export function pathwaysFor(observations, grade, n = 2, minGrade) {
+  if (!showsCareerPathways(grade, minGrade)) return []
+  const scores = Object.fromEntries(
+    dimensionScores(observations).map((d) => [d.id, d.score])
+  )
+  const ranked = PATHWAYS.map((p) => ({
+    ...p,
+    fit: Object.entries(p.dims).reduce((s, [dim, w]) => s + w * (scores[dim] || 0), 0),
+  }))
+    .filter((p) => p.fit > 0)
+    .sort((a, b) => b.fit - a.fit)
+  if (ranked.length < 2) return []
+  return ranked.slice(0, Math.max(2, n))
+}
+
+/**
+ * What a parent can do. Every item is an assisted-performance move from the
+ * ZPD ladder, so it names what the adult does rather than what the child
+ * should already manage.
+ */
 export function parentActions(observations, n = 3) {
-  const top = topDimensions(observations, n)
-  const { styleCounts } = aggregate(observations)
-  const out = top.map((d, i) => PARENT_ACTIONS[d.id][i % PARENT_ACTIONS[d.id].length])
-  if (styleCounts.encouragement && out.length) {
-    out[out.length - 1] =
-      'Find one thing to praise before you find the thing to correct. Confidence is the bottleneck right now, not ability.'
+  const steps = nextSteps(observations, n)
+  const conditions = conditionsThatWork({ name: 'they' }, observations, 'parent')
+  const out = steps.map((s) => ({
+    move: s.move,
+    scaffold: s.scaffold,
+    fade: s.fade,
+    from: s.label,
+  }))
+  if (conditions[0] && out.length) {
+    out[out.length - 1] = {
+      move: conditions[0].advice,
+      scaffold: `We have seen this help ${conditions[0].count} time${
+        conditions[0].count === 1 ? '' : 's'
+      }.`,
+      fade: 'Stop once they set it up that way themselves.',
+      from: conditions[0].label,
+    }
   }
   return out
 }
@@ -323,8 +494,8 @@ export function conversationStarters(observations, n = 3) {
   return out.slice(0, n)
 }
 
-// Cumulative dimension scores at the end of each period the child has data for,
-// plus what actually moved that term — otherwise every row reads the same.
+// Cumulative dimension scores at the end of each period the child has data
+// for, plus what actually moved that term, otherwise every row reads the same.
 export function growthSeries(observations) {
   const periods = PERIODS.filter((p) => observations.some((o) => o.period === p))
   let prev = null
@@ -332,9 +503,7 @@ export function growthSeries(observations) {
     const upto = observations.filter(
       (o) => PERIODS.indexOf(o.period) <= PERIODS.indexOf(period)
     )
-    const dims = Object.fromEntries(
-      dimensionScores(upto).map((d) => [d.id, d.score])
-    )
+    const dims = Object.fromEntries(dimensionScores(upto).map((d) => [d.id, d.score]))
     const moved = prev
       ? DIMENSIONS.map((d) => ({
           label: d.label,
@@ -366,14 +535,32 @@ export function growthSeries(observations) {
 
 // One honest sentence about how much the profile is actually built on.
 export function evidenceSummary(observations) {
+  if (!observations.length) return 'No observations recorded yet.'
   const periods = new Set(observations.map((o) => o.period))
   const teachers = new Set(observations.map((o) => o.teacher).filter(Boolean))
-  if (!observations.length) return 'No observations recorded yet.'
   return `Built from ${observations.length} observation${
     observations.length === 1 ? '' : 's'
-  } by ${teachers.size} teacher${teachers.size === 1 ? '' : 's'} across ${
+  } by ${teachers.size || 1} teacher${teachers.size === 1 ? '' : 's'} across ${
     periods.size
   } term${periods.size === 1 ? '' : 's'}.`
+}
+
+// How complete is this picture, honestly. Drives the thin-profile warning
+// and the roster equity view.
+export function profileDepth(observations) {
+  const count = observations.length
+  const dims = dimensionScores(observations).filter((d) => d.score > 0).length
+  const terms = new Set(observations.map((o) => o.period)).size
+  const stories = observations.filter(hasStory).length
+  const score = Math.min(
+    100,
+    Math.round(count * 8 + dims * 5 + terms * 8 + stories * 6)
+  )
+  let label = 'Barely started'
+  if (score >= 75) label = 'Well evidenced'
+  else if (score >= 45) label = 'Taking shape'
+  else if (score >= 20) label = 'Thin'
+  return { score, label, count, dims, terms, stories }
 }
 
 export function growthHighlights(observations) {
@@ -401,4 +588,54 @@ export function milestonesOf(observations) {
     .reverse()
 }
 
-export { DIMENSION_MAP }
+/**
+ * The PTM prep sheet. Three things to praise, one to raise, two to ask.
+ * This is the teacher's payback, and it is generated from taps they have
+ * already made.
+ */
+export function ptmSheet(student, observations) {
+  const top = topDimensions(observations, 3)
+  const edges = growthEdges(observations, { includeSchoolOnly: true })
+  const steps = nextSteps(observations, 1)
+  const stories = observations.filter(hasStory).slice(-3).reverse()
+
+  const praise = top.map((d) => {
+    const best = d.evidence[0]
+    return {
+      title: d.label,
+      line: best
+        ? `${best.label}, seen ${best.count} time${best.count === 1 ? '' : 's'} this year.`
+        : `${d.band} across the year.`,
+      evidence: d.evidence.slice(0, 2),
+    }
+  })
+
+  const raise = edges[0]
+    ? { title: edges[0].title, line: edges[0].teacher, horizon: edges[0].horizon }
+    : steps[0]
+      ? {
+          title: `Where to push next: ${steps[0].label}`,
+          line: steps[0].move,
+          horizon: steps[0].fade,
+        }
+      : null
+
+  return {
+    student,
+    praise,
+    raise,
+    ask: [
+      'What does this look like at home? Is it the same child or a different one?',
+      'What is one thing you would like us to watch for next term?',
+    ],
+    stories: stories.map((o) => ({
+      period: o.period,
+      date: o.date,
+      saw: storyText(o, 'saw'),
+      meant: storyText(o, 'meant'),
+    })),
+    depth: profileDepth(observations),
+  }
+}
+
+export { DIMENSION_MAP, DISPOSITION_MAP }

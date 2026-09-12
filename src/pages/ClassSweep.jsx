@@ -1,281 +1,361 @@
-/**
- * ClassSweep — the fast whole-class flow.
- *
- * Instead of "tell me about Aryan", it asks "who did this today?" and lets
- * the teacher tap names under each behaviour. A remark can still be attached
- * to any one child under any one tag, without leaving the flow.
- */
-
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
-  MessageSquarePlus,
-  Sparkles,
+  CircleSlash,
+  Eye,
+  EyeOff,
+  Timer,
+  Undo2,
   Zap,
 } from 'lucide-react'
 import AppShell from '../components/AppShell.jsx'
+import {
+  Avatar,
+  Badge,
+  Button,
+  Callout,
+  Card,
+  EmptyState,
+  Meter,
+  Segmented,
+  Toast,
+  cx,
+  useToast,
+} from '../components/ui.jsx'
 import { useStore } from '../data/store.jsx'
+import { useAuth } from '../data/auth.jsx'
 import { TAG_GROUPS, PERIODS } from '../data/taxonomy.js'
-import Chip from '../components/Chip.jsx'
+import { DISPOSITIONS } from '../data/pedagogy.js'
+import { byRoll, classLabel } from '../data/roster.js'
 
-const SWEEP_GROUPS = TAG_GROUPS
-const ALL_SWEEP_TAGS = SWEEP_GROUPS.flatMap((g) => g.tags)
-const MAX_TAG_NOTE = 160
+/* ══════════════════════════════════════════════════════════════════
+   Class sweep
+   The inversion that makes this product survive contact with a real
+   teacher. Instead of "tell me about Aarav", it asks "who did this
+   this week", once per prompt, and the whole class is logged in under
+   two minutes.
+   ══════════════════════════════════════════════════════════════════ */
 
-const emptySelections = () =>
-  Object.fromEntries(ALL_SWEEP_TAGS.map((t) => [t.id, new Set()]))
+// The prompt deck. Strength tags first, then two dispositions, because a
+// teacher's memory is organised by event rather than by child.
+function buildDeck() {
+  const tagPrompts = TAG_GROUPS.filter((g) => !g.watchGroup)
+    .flatMap((g) =>
+      g.tags
+        .filter((t) => Object.keys(t.dims || {}).length || t.condition)
+        .map((t) => ({
+          kind: 'tag',
+          id: t.id,
+          label: t.label,
+          group: g.label,
+          accent: g.accent,
+        }))
+    )
+    // Keep the deck short enough that it actually gets finished.
+    .filter((_, i) => i % 2 === 0)
+    .slice(0, 8)
 
-const key = (tagId, studentId) => `${tagId}|${studentId}`
+  const dispositionPrompts = DISPOSITIONS.slice(0, 3).map((d) => ({
+    kind: 'disposition',
+    id: d.id,
+    label: d.prompt,
+    group: d.label,
+    accent: 'moss',
+  }))
+
+  return [...tagPrompts, ...dispositionPrompts]
+}
 
 export default function ClassSweep() {
-  const { students, school, addBatchObservations } = useStore()
+  const { students, school, settings, addBatchObservations } = useStore()
+  const { profile } = useAuth()
+  const navigate = useNavigate()
+  const [toast, setToast] = useToast()
 
-  const [period, setPeriod] = useState(PERIODS[PERIODS.length - 1])
-  const [step, setStep] = useState('sweep') // 'sweep' | 'done'
-  const [selections, setSelections] = useState(emptySelections)
-  const [remarks, setRemarks] = useState({})
-  const [openRemark, setOpenRemark] = useState(null)
+  const roster = useMemo(
+    () => students.filter((s) => !s.archived).sort(byRoll),
+    [students]
+  )
+
+  const deck = useMemo(buildDeck, [])
+  const [step, setStep] = useState(0)
+  // picks: { [promptId]: Set<studentId> }
+  const [picks, setPicks] = useState({})
+  const [period, setPeriod] = useState(settings?.terms?.current || PERIODS[0])
+  const [visibility, setVisibility] = useState(
+    settings?.policy?.defaultVisibility || 'shared'
+  )
   const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
 
-  const toggleStudent = (tagId, studentId) =>
-    setSelections((prev) => {
-      const next = new Set(prev[tagId])
-      if (next.has(studentId)) {
-        next.delete(studentId)
-        setOpenRemark((r) => (r === key(tagId, studentId) ? null : r))
-      } else {
-        next.add(studentId)
+  const prompt = deck[step]
+  const chosen = picks[prompt?.id] || []
+
+  const toggle = (studentId) => {
+    setPicks((prev) => {
+      const cur = prev[prompt.id] || []
+      return {
+        ...prev,
+        [prompt.id]: cur.includes(studentId)
+          ? cur.filter((id) => id !== studentId)
+          : [...cur, studentId],
       }
-      return { ...prev, [tagId]: next }
+    })
+  }
+
+  const totalTaps = Object.values(picks).reduce((n, arr) => n + arr.length, 0)
+  const touched = new Set(Object.values(picks).flat())
+
+  const save = async () => {
+    // One observation per child, carrying every prompt they were tapped on.
+    const byStudent = new Map()
+    Object.entries(picks).forEach(([promptId, ids]) => {
+      const p = deck.find((d) => d.id === promptId)
+      ids.forEach((id) => {
+        if (!byStudent.has(id)) byStudent.set(id, { tags: [], dispositions: [] })
+        const entry = byStudent.get(id)
+        if (p.kind === 'tag') entry.tags.push(promptId)
+        else entry.dispositions.push(promptId)
+      })
     })
 
-  const totalTags = useMemo(
-    () => Object.values(selections).reduce((sum, s) => sum + s.size, 0),
-    [selections]
-  )
-  const touched = useMemo(() => {
-    const set = new Set()
-    Object.values(selections).forEach((s) => s.forEach((id) => set.add(id)))
-    return set
-  }, [selections])
+    if (!byStudent.size) {
+      setToast({ message: 'Nothing tapped yet.', tone: 'warn' })
+      return
+    }
 
-  const remarkCount = Object.values(remarks).filter((t) => t?.trim()).length
-
-  const submit = async () => {
-    const byStudent = {}
-    Object.entries(selections).forEach(([tagId, ids]) =>
-      ids.forEach((sid) => {
-        if (!byStudent[sid]) byStudent[sid] = { tags: [], tagNotes: {} }
-        byStudent[sid].tags.push(tagId)
-        const r = remarks[key(tagId, sid)]
-        if (r?.trim()) byStudent[sid].tagNotes[tagId] = r.trim()
-      })
-    )
-
-    const entries = Object.entries(byStudent).map(([studentId, v]) => ({
+    const date = new Date().toISOString().slice(0, 10)
+    const entries = [...byStudent.entries()].map(([studentId, e]) => ({
       studentId,
       period,
-      date: new Date().toISOString().slice(0, 10),
-      teacher: school.teacher,
-      tags: v.tags,
-      tagNotes: v.tagNotes,
-      note: '',
-      milestone: null,
-      visibility: 'shared',
+      date,
+      teacher: profile?.full_name || school?.teacher || 'Teacher',
+      tags: e.tags,
+      dispositions: e.dispositions,
+      visibility,
+      story: {},
+      tagNotes: {},
       subjects: [],
+      milestone: null,
     }))
 
-    if (!entries.length) return
     setSaving(true)
     try {
       await addBatchObservations(entries)
-      setStep('done')
+      setDone(true)
+    } catch {
+      setToast({ message: 'Could not save. Check your connection.', tone: 'alert' })
     } finally {
       setSaving(false)
     }
   }
 
-  if (step === 'done') {
+  if (!roster.length) {
     return (
-      <AppShell title="Sweep saved">
-        <div className="mx-auto flex max-w-md flex-col items-center py-16 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-moss-tint text-moss-dark">
-            <Check size={30} />
+      <AppShell title="Class sweep">
+        <EmptyState
+          icon={Zap}
+          title="No students to sweep"
+          body="Import a roster first and this becomes the fastest ninety seconds in your week."
+          action={
+            <Button variant="primary" onClick={() => navigate('/teacher/roster')}>
+              Go to the roster
+            </Button>
+          }
+        />
+      </AppShell>
+    )
+  }
+
+  if (done) {
+    return (
+      <AppShell title="Sweep saved" bare={false}>
+        <Card className="mx-auto max-w-xl text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-moss-tint text-moss">
+            <Check size={26} strokeWidth={2.4} />
           </div>
-          <h2 className="mt-6 font-display text-2xl text-ink">
-            {touched.size} {touched.size === 1 ? 'child' : 'children'} logged
+          <h2 className="font-display text-2xl font-semibold text-ink">
+            {touched.size} child{touched.size === 1 ? '' : 'ren'} logged
           </h2>
-          <p className="mt-2 text-ink-soft">
-            {totalTags} tags and {remarkCount} remark
-            {remarkCount === 1 ? '' : 's'} recorded. Profiles have been rebuilt.
+          <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
+            {totalTaps} observation{totalTaps === 1 ? '' : 's'} recorded for {period}.
+            Every profile you touched has just changed.
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              to="/teacher"
-              className="rounded-full border border-line px-5 py-2.5 text-sm font-medium text-ink-soft hover:border-ink-faint hover:text-ink"
-            >
-              Back to overview
-            </Link>
-            <button
-              type="button"
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button onClick={() => navigate('/teacher/roster')} icon={ArrowRight}>
+              See the roster
+            </Button>
+            <Button
+              variant="primary"
               onClick={() => {
-                setSelections(emptySelections())
-                setRemarks({})
-                setStep('sweep')
+                setPicks({})
+                setStep(0)
+                setDone(false)
               }}
-              className="rounded-full bg-moss px-5 py-2.5 text-sm font-semibold text-white hover:bg-moss-dark"
+              icon={Undo2}
             >
-              Log another sweep
-            </button>
+              Sweep again
+            </Button>
           </div>
-        </div>
+        </Card>
+        <Toast toast={toast} />
       </AppShell>
     )
   }
 
   return (
     <AppShell
-      title="Who did this today?"
-      subtitle={`${school.className} · tap the children each behaviour describes`}
+      eyebrow="Class sweep"
+      title={`Who did this, in ${school?.className || classLabel(roster[0])}?`}
+      subtitle="Tap every child this was true of. Skip anything that does not apply. The whole deck takes about ninety seconds."
       actions={
-        <span className="inline-flex items-center gap-2 rounded-full bg-clay-tint px-3.5 py-2 text-xs font-semibold uppercase tracking-wider text-clay-dark">
-          <Zap size={13} /> Class sweep
-        </span>
+        <>
+          <Segmented
+            options={settings?.terms?.periods || PERIODS}
+            value={period}
+            onChange={setPeriod}
+            size="sm"
+          />
+          <Button
+            variant={visibility === 'shared' ? 'secondary' : 'quiet'}
+            size="sm"
+            icon={visibility === 'shared' ? Eye : EyeOff}
+            onClick={() =>
+              setVisibility((v) => (v === 'shared' ? 'school' : 'shared'))
+            }
+          >
+            {visibility === 'shared' ? 'Parents can see' : 'School only'}
+          </Button>
+        </>
       }
     >
-      <Link
-        to="/teacher"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-ink"
-      >
-        <ArrowLeft size={15} /> Overview
-      </Link>
-
-      <div className="mt-5 rounded-2xl border border-line bg-card p-5">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-faint">
-          Term
-        </h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {PERIODS.map((p) => (
-            <Chip key={p} selected={period === p} onClick={() => setPeriod(p)}>
-              {p}
-            </Chip>
-          ))}
-        </div>
+      {/* Progress */}
+      <div className="mb-4 flex items-center gap-3">
+        <Meter pct={((step + 1) / deck.length) * 100} tone="accent" className="flex-1" />
+        <span className="kc-tnum shrink-0 text-xs font-bold text-ink-faint">
+          {step + 1} of {deck.length}
+        </span>
       </div>
 
-      <div className="mt-5 grid gap-5 pb-32 lg:grid-cols-2">
-        {SWEEP_GROUPS.map((group) => (
-          <section
-            key={group.id}
-            className="rounded-2xl border border-line bg-card p-5"
-          >
-            <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-faint">
-              {group.label}
+      <Card className="mb-4">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <Badge tone={prompt.accent === 'moss' ? 'moss' : 'accent'}>
+              {prompt.group}
+            </Badge>
+            <h2 className="mt-2 font-display text-2xl font-semibold leading-snug text-ink">
+              {prompt.label}
             </h2>
-            <ul className="mt-3 divide-y divide-line-soft">
-              {group.tags.map((tag) => {
-                const sel = selections[tag.id]
-                return (
-                  <li key={tag.id} className="py-3.5 first:pt-0 last:pb-0">
-                    <p className="mb-2.5 text-sm font-semibold text-ink">
-                      {tag.label}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {students.map((s) => {
-                        const active = sel.has(s.id)
-                        return (
-                          <span key={s.id} className="inline-flex items-stretch">
-                            <button
-                              type="button"
-                              onClick={() => toggleStudent(tag.id, s.id)}
-                              className={[
-                                'rounded-l-full border px-3.5 py-1.5 text-sm font-medium transition',
-                                active
-                                  ? group.accent === 'clay'
-                                    ? 'border-clay bg-clay-tint text-clay-dark'
-                                    : 'border-moss bg-moss-tint text-moss-dark'
-                                  : 'rounded-r-full border-line bg-paper text-ink-soft hover:border-ink-faint hover:text-ink',
-                              ].join(' ')}
-                            >
-                              {s.name.split(' ')[0]}
-                            </button>
-                            {active && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setOpenRemark((r) =>
-                                    r === key(tag.id, s.id) ? null : key(tag.id, s.id)
-                                  )
-                                }
-                                aria-label={`Add a remark about ${s.name.split(' ')[0]}`}
-                                className={[
-                                  'rounded-r-full border border-l-0 px-2.5 transition',
-                                  group.accent === 'clay'
-                                    ? 'border-clay bg-clay-tint text-clay-dark'
-                                    : 'border-moss bg-moss-tint text-moss-dark',
-                                  remarks[key(tag.id, s.id)]?.trim()
-                                    ? 'opacity-100'
-                                    : 'opacity-60 hover:opacity-100',
-                                ].join(' ')}
-                              >
-                                <MessageSquarePlus size={14} />
-                              </button>
-                            )}
-                          </span>
-                        )
-                      })}
-                    </div>
-
-                    {students.map((s) => {
-                      const k = key(tag.id, s.id)
-                      if (openRemark !== k || !sel.has(s.id)) return null
-                      const value = remarks[k] || ''
-                      return (
-                        <div key={k} className="kc-fade mt-3">
-                          <textarea
-                            autoFocus
-                            rows={2}
-                            maxLength={MAX_TAG_NOTE}
-                            value={value}
-                            onChange={(e) =>
-                              setRemarks((prev) => ({ ...prev, [k]: e.target.value }))
-                            }
-                            placeholder={`${s.name.split(' ')[0]} — what did this look like?`}
-                            className="w-full resize-none rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm leading-relaxed outline-none placeholder:text-ink-faint focus:border-moss"
-                          />
-                          <p className="kc-tnum mt-1 text-right text-xs text-ink-faint">
-                            {value.length}/{MAX_TAG_NOTE}
-                          </p>
-                        </div>
-                      )
-                    })}
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ))}
-      </div>
-
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur sm:px-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <p className="kc-tnum text-sm text-ink-faint">
-            {totalTags} tag{totalTags === 1 ? '' : 's'} across {touched.size} child
-            {touched.size === 1 ? '' : 'ren'}
-            {remarkCount ? ` · ${remarkCount} remark${remarkCount === 1 ? '' : 's'}` : ''}
-          </p>
-          <button
-            type="button"
-            disabled={totalTags === 0 || saving}
-            onClick={submit}
-            className="inline-flex items-center gap-2 rounded-full bg-moss px-6 py-3 font-semibold text-white transition hover:bg-moss-dark disabled:cursor-not-allowed disabled:bg-ink-faint/40"
-          >
-            <Sparkles size={16} /> {saving ? 'Saving…' : 'Save sweep'}
-          </button>
+          </div>
+          <div className="text-right">
+            <p className="font-display text-3xl font-semibold text-accent-ink kc-tnum">
+              {chosen.length}
+            </p>
+            <p className="text-2xs text-ink-faint">tapped</p>
+          </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {roster.map((s) => {
+            const active = chosen.includes(s.id)
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => toggle(s.id)}
+                aria-pressed={active}
+                className={cx(
+                  'flex items-center gap-2.5 rounded-[12px] border p-2.5 text-left transition-all duration-150',
+                  active
+                    ? 'border-accent bg-accent text-white shadow-[var(--shadow-card)]'
+                    : 'border-line bg-card hover:border-ink-faint/45 hover:bg-paper-2/60'
+                )}
+              >
+                {active ? (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/25">
+                    <Check size={16} strokeWidth={3} />
+                  </span>
+                ) : (
+                  <Avatar name={s.name} size={32} />
+                )}
+                <span className="min-w-0">
+                  <span
+                    className={cx(
+                      'block truncate text-xs font-bold',
+                      active ? 'text-white' : 'text-ink'
+                    )}
+                  >
+                    {s.name}
+                  </span>
+                  <span
+                    className={cx(
+                      'kc-tnum block text-2xs',
+                      active ? 'text-white/75' : 'text-ink-faint'
+                    )}
+                  >
+                    {s.rollNo ? `Roll ${s.rollNo}` : s.studentCode || ''}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </Card>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          icon={ArrowLeft}
+          disabled={step === 0}
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
+        >
+          Back
+        </Button>
+
+        <span className="text-xs text-ink-faint">
+          {touched.size} of {roster.length} children touched so far
+        </span>
+
+        {step < deck.length - 1 ? (
+          <div className="flex gap-2">
+            <Button
+              variant="quiet"
+              icon={CircleSlash}
+              onClick={() => setStep((s) => s + 1)}
+            >
+              Nobody
+            </Button>
+            <Button
+              variant="primary"
+              iconRight={ArrowRight}
+              onClick={() => setStep((s) => s + 1)}
+            >
+              Next prompt
+            </Button>
+          </div>
+        ) : (
+          <Button variant="primary" icon={Check} loading={saving} onClick={save}>
+            Save the sweep
+          </Button>
+        )}
       </div>
+
+      <Callout tone="neutral" icon={Timer} className="mt-5">
+        <p>
+          A per-child form takes about 45 seconds. Across 40 children that is
+          half an hour. This deck asks the question the way memory actually
+          stores it, which is by event rather than by child, and it covers the
+          whole class in a fraction of the time.
+        </p>
+        <p className="mt-2">
+          Use the per-child form for the exception: the child who did something
+          worth a sentence. That sentence is what a parent remembers.
+        </p>
+      </Callout>
+
+      <Toast toast={toast} />
     </AppShell>
   )
 }

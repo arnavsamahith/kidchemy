@@ -1,118 +1,132 @@
 # Kidchemy
 
-A living child profile platform. Teachers log lightweight observations; parents
-get a warm, human portrait of their child — reached by scanning a QR sticker on
-the physical report card. It augments the report card. It replaces nothing.
+A living child profile platform. Teachers record what they already notice.
+Parents get a real picture of their child instead of a percentage.
 
-## Run it
+Kidchemy sits on top of the existing report card rather than replacing it: a QR
+sticker on the physical card the school already sends home.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
+npm run dev
 ```
 
-Build: `npm run build` · Preview the build: `npm run preview`
+---
 
-**Before the first run against a fresh Supabase project**, paste
-`supabase/schema.sql` into the Supabase SQL editor and run it. It creates the
-tables, the auth trigger, the row-level security policies and the pilot data.
-Running it again is safe.
+## What is here
 
-## Two doors
-
-Kidchemy has two separate apps behind one URL, gated by a role stored on the
-user's profile row.
-
-| | Teacher | Parent |
+| Route | Who | What |
 | --- | --- | --- |
-| Signs up with | a **school code** (`VIDYA-6A` in the pilot) | their **child's access code** (e.g. `ARYAN-4821`) |
-| Can see | the whole class, including school-only observations | one profile per linked child, shared observations only |
-| Can write | observations, remarks, roster changes | nothing |
+| `/` | anyone | Landing page |
+| `/login` | anyone | Sign in and sign up. Teachers need a school code. |
+| `/teacher` | teacher | Today: coverage, fairness, who has not been seen |
+| `/teacher/sweep` | teacher | Class sweep, the primary input flow |
+| `/teacher/roster` | teacher | Roster, CSV import, profile depth per child |
+| `/teacher/student/:id` | teacher | One child: picture, next steps, progress card, timeline |
+| `/teacher/student/:id/observe` | teacher | The observation form |
+| `/teacher/analytics` | teacher | Patterns, fairness, your own remarks |
+| `/teacher/ptm` | teacher | Printable parent meeting sheets |
+| `/teacher/stickers` | teacher | Printable QR stickers |
+| `/parent` | parent | Your children |
+| `/profile/:id` | parent, teacher | The profile the family reads |
+| `/admin` | superadmin | Console, coverage and health across classes |
+| `/admin/people` | superadmin | Accounts, roles, school codes |
+| `/admin/config` | superadmin | Policy switches, terms, vocabulary reference |
+| `/admin/audit` | superadmin | Audit trail |
 
-Row-level security enforces this in Postgres, not in the browser — a parent's
-session physically cannot read another child's rows.
+---
 
-## Routes
+## The two flows that matter
 
-| Route | What it is |
-| --- | --- |
-| `/` | Public landing page |
-| `/login` | Sign in / sign up, role-switched |
-| `/teacher` | Overview: coverage, the class, evidence heatmap, blind spots |
-| `/teacher/roster` | Sortable, searchable table; add a child; parent codes |
-| `/teacher/analytics` | Growth, tag frequency, cadence, milestones, remark ledger |
-| `/teacher/sweep` | Class sweep — whole class in two minutes |
-| `/teacher/stickers` | Printable QR + code stickers |
-| `/teacher/student/:id` | One child's file: strengths, subjects, full timeline |
-| `/teacher/student/:id/observe` | The observation form |
-| `/teacher/student/:id/observe/:obsId` | The same form, editing an entry |
-| `/parent` | A parent's children |
-| `/profile/:id` | The parent view — this is the product |
+**Class sweep** is the input. It asks "who did this this week" one prompt at a
+time and lets the teacher tap every child it was true of. The whole class in
+about ninety seconds. The per-child form is the exception path, for the child
+who did something worth a sentence.
 
-## How it's put together
+This inversion is the difference between a product a teacher uses and a product
+a teacher abandons. A real Indian secondary teacher handles four to six
+sections of forty to sixty children. Per-child logging at forty-five seconds
+each is two and a half hours a week of unpaid work for a benefit that accrues
+to someone else.
+
+**Parent meeting sheets** are the payback. Three things to praise with the
+evidence attached, one thing to raise, two questions to ask, generated from
+taps the teacher already made. Teachers dread parent meetings and have nothing
+to say past the marks. This is what makes week four happen.
+
+---
+
+## What the profile is built from
+
+Everything is deterministic and rule-based. No model writes a claim about a
+child. Every sentence traces to a counted observation, so when a teacher asks
+why the profile says something, there is an answer.
+
+- `src/data/taxonomy.js` is the vocabulary: the tags a teacher can tap, what
+  each weighs into, and which of the five NEP 2020 domains it rolls up to.
+- `src/data/pedagogy.js` is the philosophy layer: frameworks, dispositions, the
+  learning-story structure, the fixed-trait language guard, the ZPD ladders.
+- `src/data/derive.js` turns taps into a portrait.
+- `src/data/analytics.js` does the same at class level, including the fairness
+  measures.
+
+`docs/PEDAGOGY.md` explains which claims about children this product makes,
+where each comes from, and which popular ideas it deliberately refuses.
+`docs/ROLLOUT.md` is how to get it into schools.
+
+---
+
+## Four decisions that keep it honest
+
+**It measures its own bias.** A record built on visible behaviour
+under-describes quiet children. The Fairness tab shows exactly how unevenly
+attention is landing and who has not been seen in a month.
+
+**Teachers can withhold.** Every observation is shared or school-only. A
+teacher who knows a parent reads every concern stops recording concerns, and
+the data dies quietly. Growth-edge tags default to school-only.
+
+**No careers below Class 9.** A career suggested to an eleven-year-old becomes
+a label stickier than a percentage, because it sounds insightful. Below the
+threshold, parents see what to feed the interest instead. A superadmin can move
+the threshold in `/admin/config`.
+
+**No learning styles.** The visual, auditory, kinesthetic meshing hypothesis is
+not supported by evidence. The profile says "here are the specific conditions
+in which we have watched this child do good work, and how often", which is a
+different and defensible claim.
+
+---
+
+## Database
+
+Supabase, with row-level security doing the scoping. Paste
+`supabase/schema.sql` into the SQL editor. It is safe to re-run.
+
+Three roles:
+
+- **parent** sees only their linked children, and only shared observations.
+- **teacher** sees their school. Cannot self-register without a school code.
+- **admin** sees everything and can change configuration.
+
+The first superadmin has to be made by hand, because promoting to admin
+requires an existing admin. The two lines to run are at the bottom of
+`supabase/schema.sql`.
+
+Config comes from environment variables when present and falls back to the
+pilot project so `npm run dev` works with no setup. See `.env.example`.
+
+---
+
+## Roster import
+
+`dump/kidchemy - Student data.csv` is the canonical shape:
 
 ```
-src/
-  data/
-    taxonomy.js   the vocabulary — every tag and the dimensions it feeds
-    derive.js     synthesis — tags in, portrait out (narrative, radar, pathways)
-    analytics.js  class-level analysis — heatmap, growth, frequency, filters
-    seed.js       reference copy of the pilot classroom (DB is the real source)
-    supabase.js   client, queries, auth calls
-    auth.jsx      session + profile + role
-    store.jsx     React context over Supabase, scoped by the signed-in user
-  components/     AppShell, RequireRole, charts, Chip, StrengthMap, Ornament
-  pages/
-    Landing, Login, ObservationForm, ClassSweep, ParentProfile
-    teacher/      Overview, Roster, Analytics, StudentDetail, Stickers
-    parent/       ParentHome
+Student Name,Student ID,Current Grade,Current Section,Current Roll Number
+Aarav Sharma,2019M01,7,C,1
 ```
 
-The important file is still **`src/data/derive.js`**. Everything a parent reads
-is derived deterministically from the tags a teacher tapped — the narrative, the
-strength map, the pathways, the parent actions, the questions. Nothing is
-hardcoded per child, so adding one observation visibly changes the profile.
-
-That determinism is deliberate. When a teacher asks *"why does it say that
-about my student?"*, there is always an answer.
-
-### Custom remarks
-
-Every tag a teacher taps opens its own remark box. Those remarks are stored as
-`observations.tag_notes` (a `jsonb` map of `tagId → text`), and they are the one
-part of the profile written in the teacher's own words rather than derived.
-They appear in three places: the child's timeline, the class remark ledger on
-`/teacher/analytics`, and — when the observation is shared — the parent profile
-under *"In your teacher's words"*.
-
-### Charts
-
-`src/components/charts.jsx`. The series colours in `index.css`
-(`--color-series-*`) are a validated categorical palette: every adjacent pair
-clears ΔE ≥ 12 under protanopia, deuteranopia and tritanopia on the paper
-surface. The UI moss/clay are too low-chroma and too close on the red–green
-axis to carry data, which is why charts use a separate set.
-
-### Tuning it
-
-- A tag reads wrong to a pilot teacher → edit its `dims` weights in `taxonomy.js`.
-- The profile feels generic → edit the phrase banks at the top of `derive.js`.
-- Scores feel too generous / too stingy → change `K` in `derive.js`
-  (higher = more evidence needed before a dimension reads as established).
-- A new school joins → insert a row into `teacher_codes`.
-
-### Persistence
-
-Supabase Postgres. There is no localStorage cache any more — a shared staffroom
-laptop must not keep one teacher's class around for the next person who signs in.
-
-## Stack
-
-React 19 · Vite · React Router · Tailwind v4 · Supabase (Postgres + Auth) ·
-lucide-react · qrcode
-
-## Not built yet
-
-Multi-class and school-admin views, invitations by email, multilingual output,
-PDF export, LLM prose. See `KIDCHEMY_NOTES.md` for the order to build them in
-and why.
+Headers are matched loosely, so most school ERP exports work unchanged. Import
+from `/teacher/roster`. Access codes are generated fresh and carry no part of
+the child's name, so a photographed sticker does not reveal whose it is.

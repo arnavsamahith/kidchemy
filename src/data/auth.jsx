@@ -82,8 +82,9 @@ export function AuthProvider({ children }) {
       user: session?.user ?? null,
       profile,
       role: profile?.role ?? null,
-      isTeacher: profile?.role === 'teacher',
+      isTeacher: profile?.role === 'teacher' || profile?.role === 'admin',
       isParent: profile?.role === 'parent',
+      isAdmin: profile?.role === 'admin',
       ready,
       refreshProfile,
       signIn: apiSignIn,
@@ -118,6 +119,10 @@ export function readableAuthError(err) {
     return 'That school code is not recognised, so the account was not created. Check the code and try again.'
   if (/UNKNOWN_CODE/i.test(msg))
     return "We don't have a child with that code. Check the code printed on the report-card sticker."
+  if (/NOT_AN_ADMIN/i.test(msg))
+    return 'That action needs a superadmin account.'
+  if (/NO_SUCH_USER/i.test(msg))
+    return 'No account exists with that email address yet. Ask them to sign up first.'
   if (/NOT_A_PARENT/i.test(msg))
     return 'Child codes can only be added from a parent account.'
   if (/Invalid login credentials/i.test(msg))

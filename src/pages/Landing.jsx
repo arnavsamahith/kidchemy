@@ -1,224 +1,250 @@
+import React from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
+  ClipboardList,
   Eye,
-  GraduationCap,
-  MessageSquareQuote,
+  Feather,
+  Layers,
   QrCode,
+  Scale,
   ShieldCheck,
-  UserRound,
+  Sparkles,
   Zap,
 } from 'lucide-react'
-import { useAuth } from '../data/auth.jsx'
-import { Sprig, Arc, Seed } from '../components/Ornament.jsx'
+import { Badge, Button, Card } from '../components/ui.jsx'
+import { Mark } from '../components/AppShell.jsx'
+import { FRAMEWORKS } from '../data/pedagogy.js'
 
-const HOW = [
+const STEPS = [
   {
     icon: Zap,
-    title: 'The teacher taps',
-    body: 'A whole class in under two minutes. Tap a behaviour, tap the names it describes, done.',
+    title: 'The teacher sweeps the class',
+    body: 'Not "tell me about Aarav". One prompt at a time, tap every child it was true of. Forty children in about ninety seconds.',
   },
   {
-    icon: MessageSquareQuote,
-    title: 'And writes one line',
-    body: 'Every tag has room for the teacher’s own words — the specific thing they saw, in the moment they saw it.',
+    icon: Feather,
+    title: 'The exceptions get a story',
+    body: 'For the child who did something worth a sentence, a short structured note: what I saw, what I think it means, what to offer next.',
+  },
+  {
+    icon: Layers,
+    title: 'The picture builds itself',
+    body: 'Strengths, dispositions, the conditions in which they do their best work, and the next step just past what they manage alone.',
   },
   {
     icon: QrCode,
-    title: 'The parent scans',
-    body: 'A sticker on the report card opens a profile written by the people who were actually in the room.',
+    title: 'The parent scans the report card',
+    body: 'A QR sticker on the physical card they already receive. No app, no new system, nothing for the school to replace.',
   },
 ]
 
-const PROMISES = [
+const PROOFS = [
   {
-    icon: ShieldCheck,
-    title: 'Nothing is generated',
-    body: 'Every sentence traces back to a tag a teacher tapped or a line a teacher typed. No model writes about your child.',
+    icon: Scale,
+    title: 'It measures its own bias',
+    body: 'A record built on visible behaviour under-describes quiet children. Kidchemy shows the teacher exactly how unevenly attention is landing, and who has not been seen in a month.',
   },
   {
     icon: Eye,
-    title: 'The teacher decides what is shared',
-    body: 'Concerns stay in school records by default. Parents see strengths and specifics, not a file about their child.',
+    title: 'Teachers can withhold',
+    body: 'Every observation is shared or school-only. A teacher who knows a parent reads every concern stops recording concerns, and the data quietly dies. So concerns default to staff only.',
   },
   {
-    icon: Seed,
-    title: 'Nobody is ranked',
-    body: 'There is no class position, no percentile, no leaderboard. A thin profile stays honestly thin.',
+    icon: ClipboardList,
+    title: 'It produces the card schools already owe',
+    body: 'NEP 2020 asks Indian schools for a Holistic Progress Card across five domains, with self, peer and parent input. Kidchemy assembles it from taps the teacher already made.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Nothing is invented',
+    body: 'Every sentence traces to a counted observation. No model writes a claim about a child. When a teacher asks why it says something, there is an answer.',
   },
 ]
 
 export default function Landing() {
-  const { session, profile } = useAuth()
-  const home = profile?.role === 'teacher' ? '/teacher' : '/parent'
-
   return (
     <div className="min-h-dvh bg-paper">
-      {/* ── Top bar ────────────────────────────────────────── */}
-      <div className="border-b border-line bg-paper/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <span className="flex items-center gap-2.5">
-            <span
-              aria-hidden="true"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-moss text-[13px] font-bold text-white"
-            >
-              K
+      {/* ── Nav ─────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3.5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <Mark size={28} />
+            <span className="font-display text-lg font-semibold text-ink">
+              Kidchemy
             </span>
-            <span className="font-display text-[17px] text-ink">Kidchemy</span>
-          </span>
-          {session && profile ? (
-            <Link
-              to={home}
-              className="inline-flex items-center gap-2 rounded-full bg-moss px-4 py-2 text-sm font-semibold text-white transition hover:bg-moss-dark"
-            >
-              Go to my workspace <ArrowRight size={15} />
-            </Link>
-          ) : (
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2 text-sm font-medium text-ink-soft transition hover:border-ink-faint hover:text-ink"
-            >
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button as={Link} to="/login" size="sm" variant="quiet">
               Sign in
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-line">
-        <Arc className="pointer-events-none absolute -right-24 -top-32 h-[420px] w-[420px] text-clay opacity-50" />
-        <Sprig className="pointer-events-none absolute -bottom-16 left-[62%] hidden h-96 w-56 text-moss opacity-40 lg:block" />
-        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-clay">
-            For Indian schools
-          </p>
-          <h1 className="mt-5 max-w-3xl font-display text-[44px] leading-[1.05] text-ink sm:text-[68px]">
-            A child is not a percentage.
-          </h1>
-          <p className="mt-7 max-w-xl text-[17px] leading-relaxed text-ink-soft">
-            Teachers see extraordinary things every day and have nowhere to put
-            them. Kidchemy gives them somewhere — a few taps per child — and
-            turns it into a profile a parent actually wants to read.
-          </p>
-          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-faint">
-            It sits on top of the report card. It replaces nothing.
-          </p>
-
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Link
-              to="/login?role=teacher"
-              className="inline-flex items-center gap-2 rounded-full bg-moss px-6 py-3 font-semibold text-white transition hover:bg-moss-dark"
-            >
-              <GraduationCap size={17} /> I'm a teacher
-            </Link>
-            <Link
-              to="/login?role=parent"
-              className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-6 py-3 font-semibold text-ink-soft transition hover:border-ink-faint hover:text-ink"
-            >
-              <UserRound size={17} /> I'm a parent
-            </Link>
+            </Button>
+            <Button as={Link} to="/login?mode=signup" size="sm" variant="primary">
+              Get started
+            </Button>
           </div>
+        </div>
+      </header>
+
+      {/* ── Hero ────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-3xl px-5 pb-16 pt-16 text-center sm:pt-24">
+        <Badge tone="accent" icon={Sparkles} className="mb-5">
+          Aligned with the NEP 2020 Holistic Progress Card
+        </Badge>
+        <h1 className="font-display text-4xl font-semibold leading-[1.08] text-ink sm:text-5xl">
+          Every child is more than the number on their report card.
+        </h1>
+        <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
+          Teachers notice extraordinary things every single day and have nowhere
+          to put them. Kidchemy turns those noticings into a real picture of a
+          child, in the time a teacher actually has.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Button as={Link} to="/login?mode=signup" variant="primary" size="lg" iconRight={ArrowRight}>
+            Start with one class
+          </Button>
+          <Button as={Link} to="/login" size="lg">
+            I already have an account
+          </Button>
+        </div>
+        <p className="mt-4 text-xs text-ink-faint">
+          Teachers need a school code. Parents need the code on their child's
+          report card sticker.
+        </p>
+      </section>
+
+      {/* ── The problem, stated plainly ─────────────────────── */}
+      <section className="border-y border-line bg-card py-16">
+        <div className="mx-auto max-w-3xl px-5">
+          <p className="kc-eyebrow mb-3">The problem</p>
+          <p className="font-display text-2xl leading-snug text-ink sm:text-3xl">
+            A child who scores 58% in Science gets called weak in Science. That
+            same child might ask the best questions in the room, understand the
+            concept better than anyone, and simply lose half of it on paper.
+          </p>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft">
+            The report card tells you where a child stands. It says nothing
+            about who they are, how they think, or what to do next. The student
+            internalises a number as an identity, the parent chases marks
+            because marks are the only signal they get, and the teacher watches
+            all of it knowing better and having no way to say so.
+          </p>
         </div>
       </section>
 
-      {/* ── How it works ───────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
-        <h2 className="font-display text-3xl text-ink">Three steps, one term</h2>
-        <ul className="mt-8 grid gap-5 md:grid-cols-3">
-          {HOW.map((h, i) => {
-            const Icon = h.icon
-            return (
-              <li key={h.title} className="rounded-2xl border border-line bg-card p-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-moss-tint text-moss-dark">
-                  <Icon size={19} />
+      {/* ── How it works ────────────────────────────────────── */}
+      <section className="mx-auto max-w-5xl px-5 py-16">
+        <p className="kc-eyebrow mb-2">How it works</p>
+        <h2 className="mb-8 font-display text-3xl font-semibold text-ink">
+          Four steps, and none of them add an hour to a teacher's week
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {STEPS.map((s, i) => (
+            <Card key={s.title}>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-accent-tint text-accent-ink">
+                  <s.icon size={17} strokeWidth={2.1} />
                 </span>
-                <p className="kc-tnum mt-5 text-xs font-semibold text-ink-faint">
-                  0{i + 1}
-                </p>
-                <h3 className="mt-1 font-display text-xl text-ink">{h.title}</h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-                  {h.body}
-                </p>
-              </li>
-            )
-          })}
-        </ul>
+                <span className="kc-tnum text-2xs font-bold text-ink-faint">
+                  Step {i + 1}
+                </span>
+              </div>
+              <h3 className="font-display text-lg font-semibold text-ink">
+                {s.title}
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{s.body}</p>
+            </Card>
+          ))}
+        </div>
       </section>
 
-      {/* ── Promises ───────────────────────────────────────── */}
-      <section className="border-y border-line bg-paper-2/60">
-        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
-          <h2 className="font-display text-3xl text-ink">What Kidchemy will not do</h2>
-          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-soft">
-            The restraint is the product. Anything that would turn a child into
-            a number has been deliberately left out.
+      {/* ── Why it does not become a horoscope ──────────────── */}
+      <section className="border-y border-line bg-card py-16">
+        <div className="mx-auto max-w-5xl px-5">
+          <p className="kc-eyebrow mb-2">Why you can believe it</p>
+          <h2 className="mb-3 font-display text-3xl font-semibold text-ink">
+            Most products like this become a horoscope
+          </h2>
+          <p className="mb-8 max-w-2xl text-lg text-ink-soft">
+            Warm generic prose and relentless positivity produce a page that
+            could describe any child. Four decisions keep this one honest.
           </p>
-          <ul className="mt-8 grid gap-5 md:grid-cols-3">
-            {PROMISES.map((p) => {
-              const Icon = p.icon
-              return (
-                <li key={p.title} className="rounded-2xl border border-line bg-card p-6">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-clay-tint text-clay-dark">
-                    <Icon className="h-5 w-5" size={19} />
-                  </span>
-                  <h3 className="mt-5 font-display text-xl text-ink">{p.title}</h3>
-                  <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-                    {p.body}
-                  </p>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      </section>
-
-      {/* ── Two doors ──────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="rounded-3xl border border-line bg-card p-8">
-            <GraduationCap size={22} className="text-moss" />
-            <h3 className="mt-4 font-display text-2xl text-ink">Teachers</h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-              A workspace for the whole class: the sweep, per-child files with
-              full history, custom remarks under every tag, and honest class
-              insights that tell you what you haven't looked at yet.
-            </p>
-            <Link
-              to="/login?role=teacher&mode=signup"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-moss px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-moss-dark"
-            >
-              Create a teacher account <ArrowRight size={15} />
-            </Link>
-            <p className="mt-3 text-xs text-ink-faint">
-              Needs a school code from your coordinator.
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-line bg-card p-8">
-            <UserRound size={22} className="text-clay" />
-            <h3 className="mt-4 font-display text-2xl text-ink">Parents</h3>
-            <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-              One profile per child, written by the people who teach them.
-              Strengths with the evidence behind them, what to do this month,
-              and questions worth asking at dinner.
-            </p>
-            <Link
-              to="/login?role=parent&mode=signup"
-              className="mt-6 inline-flex items-center gap-2 rounded-full border border-line px-5 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-ink-faint hover:text-ink"
-            >
-              Use my child's code <ArrowRight size={15} />
-            </Link>
-            <p className="mt-3 text-xs text-ink-faint">
-              The code is on the report-card sticker.
-            </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {PROOFS.map((p) => (
+              <div key={p.title} className="rounded-[14px] border border-line p-5">
+                <p.icon size={18} className="mb-3 text-moss" />
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  {p.title}
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{p.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto w-full max-w-6xl px-5 py-8 text-sm text-ink-faint sm:px-8">
-          Kidchemy · Pehchaan — a truer picture of every child. Profiles are
-          shared only with the school and the family.
+      {/* ── What it is built on ─────────────────────────────── */}
+      <section className="mx-auto max-w-5xl px-5 py-16">
+        <p className="kc-eyebrow mb-2">What it is built on</p>
+        <h2 className="mb-3 font-display text-3xl font-semibold text-ink">
+          Borrowed from people who worked this out already
+        </h2>
+        <p className="mb-8 max-w-2xl text-lg text-ink-soft">
+          None of this is new. Observation-led assessment has a century of
+          practice behind it. What has been missing is a way to do it in a class
+          of forty without a second teacher in the room.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.values(FRAMEWORKS).map((f) => (
+            <div key={f.id} className="rounded-[12px] border border-line bg-card p-4">
+              <p className="text-sm font-bold text-ink">{f.label}</p>
+              <p className="mt-1 text-sm text-ink-soft">{f.oneLine}</p>
+              <p className="mt-2 text-2xs text-ink-faint">Used for: {f.usedFor}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-6 max-w-2xl text-sm text-ink-faint">
+          What we refused matters too. Learning styles are not supported by the
+          evidence, so this product never tells you your child is a visual
+          learner. And it does not name careers for children below Class 9,
+          because a career suggested at eleven becomes a label that sticks
+          harder than a percentage.
+        </p>
+      </section>
+
+      {/* ── Close ───────────────────────────────────────────── */}
+      <section className="border-t border-line bg-card py-16">
+        <div className="mx-auto max-w-2xl px-5 text-center">
+          <h2 className="font-display text-3xl font-semibold leading-tight text-ink">
+            Start with one class, one teacher, four weeks.
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-lg text-ink-soft">
+            Not a rollout. One teacher, one section, and the question that
+            actually matters: is she still logging in week four without anyone
+            asking her to?
+          </p>
+          <Button
+            as={Link}
+            to="/login?mode=signup"
+            variant="primary"
+            size="lg"
+            className="mt-7"
+            iconRight={ArrowRight}
+          >
+            Get started
+          </Button>
+        </div>
+      </section>
+
+      <footer className="border-t border-line py-8">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5">
+          <div className="flex items-center gap-2">
+            <Mark size={22} />
+            <span className="text-sm font-semibold text-ink">Kidchemy</span>
+          </div>
+          <p className="text-xs text-ink-faint">
+            Children's data stays with the school. No advertising, no third
+            party analytics on parent pages, ever.
+          </p>
         </div>
       </footer>
     </div>

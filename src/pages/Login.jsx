@@ -1,36 +1,44 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import {
-  CircleAlert,
-  ArrowRight,
-  GraduationCap,
-  Loader2,
-  Mail,
-  UserRound,
-} from 'lucide-react'
+import { GraduationCap, Heart, Info, ShieldCheck } from 'lucide-react'
 import { useAuth, readableAuthError } from '../data/auth.jsx'
-import { Sprig, Arc } from '../components/Ornament.jsx'
+import { Mark } from '../components/AppShell.jsx'
+import {
+  Button,
+  Callout,
+  Card,
+  Field,
+  Input,
+  cx,
+} from '../components/ui.jsx'
+import { TEACHER_CODE_HINT } from '../data/seed.js'
 
 const ROLES = [
   {
     id: 'teacher',
-    label: 'Teacher',
+    label: 'I teach',
     icon: GraduationCap,
-    blurb: 'Log observations, see the class, write remarks.',
+    blurb: 'You log observations for your class.',
     codeLabel: 'School code',
-    codeHint: 'The code your coordinator gave you. Pilot class: VIDYA-6A',
-    codeRequired: true,
+    codeHint: `Your coordinator has this. The pilot class code is ${TEACHER_CODE_HINT}.`,
+    codePlaceholder: 'VIDYA-7C',
   },
   {
     id: 'parent',
-    label: 'Parent',
-    icon: UserRound,
-    blurb: "Read your child's profile as their teachers built it.",
-    codeLabel: "Your child's code",
-    codeHint: 'Printed on the report-card sticker, e.g. ARYAN-4821',
-    codeRequired: true,
+    label: 'I am a parent',
+    icon: Heart,
+    blurb: "You read your child's profile.",
+    codeLabel: "Code from your child's report card",
+    codeHint: 'Printed on the Kidchemy sticker. You can also add it later.',
+    codePlaceholder: 'ABCD-1234',
   },
 ]
+
+function homeFor(role) {
+  if (role === 'admin') return '/admin'
+  if (role === 'teacher') return '/teacher'
+  return '/parent'
+}
 
 export default function Login() {
   const navigate = useNavigate()
@@ -38,29 +46,24 @@ export default function Login() {
   const [params] = useSearchParams()
   const { signIn, signUp, session, profile, ready } = useAuth()
 
-  const [role, setRole] = useState(params.get('role') === 'parent' ? 'parent' : 'teacher')
   const [mode, setMode] = useState(params.get('mode') === 'signup' ? 'signup' : 'signin')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [code, setCode] = useState(params.get('code') || '')
+  const [role, setRole] = useState('teacher')
+  const [form, setForm] = useState({ email: '', password: '', fullName: '', code: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-  const [notice, setNotice] = useState(
-    params.get('state') === 'no-profile'
-      ? 'Your account exists but has no role attached yet. Sign out and create the account again with a school or child code.'
-      : null
-  )
+  const [notice, setNotice] = useState(null)
 
-  const active = ROLES.find((r) => r.id === role)
+  const noProfile = params.get('state') === 'no-profile'
 
-  // Already signed in? Go where this person belongs.
+  // Already signed in: go where they belong.
   useEffect(() => {
     if (!ready || !session || !profile) return
     const from = location.state?.from
-    if (from && from !== '/login') navigate(from, { replace: true })
-    else navigate(profile.role === 'teacher' ? '/teacher' : '/parent', { replace: true })
+    navigate(from || homeFor(profile.role), { replace: true })
   }, [ready, session, profile, navigate, location.state])
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const roleMeta = ROLES.find((r) => r.id === role)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -69,10 +72,16 @@ export default function Login() {
     setNotice(null)
     try {
       if (mode === 'signin') {
-        await signIn(email, password)
+        await signIn(form.email, form.password)
       } else {
-        const res = await signUp({ email, password, role, fullName, code })
-        if (!res.session) {
+        const res = await signUp({
+          email: form.email,
+          password: form.password,
+          role,
+          fullName: form.fullName,
+          code: form.code,
+        })
+        if (!res?.session) {
           setNotice(
             'Account created. Check your inbox to confirm the email address, then sign in.'
           )
@@ -87,202 +96,178 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[1.05fr_1fr]">
-      {/* ── Left: what this is ──────────────────────────────── */}
-      <div className="relative hidden overflow-hidden border-r border-line bg-paper-2/70 px-12 py-14 lg:flex lg:flex-col lg:justify-between">
-        <Arc className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 text-clay opacity-60" />
-        <Sprig className="pointer-events-none absolute -bottom-10 right-4 h-80 w-52 text-moss opacity-70" />
-
-        <Link to="/" className="relative text-xs font-semibold uppercase tracking-[0.22em] text-clay">
-          Kidchemy
-        </Link>
-
-        <div className="relative max-w-md">
-          <h2 className="font-display text-[44px] leading-[1.05] text-ink">
-            A child is not
-            <br />a percentage.
-          </h2>
-          <p className="mt-6 text-[16px] leading-relaxed text-ink-soft">
-            Teachers see extraordinary things every day and have nowhere to put
-            them. Kidchemy gives them somewhere — a few taps per child — and
-            turns it into a profile a parent actually wants to read.
-          </p>
-        </div>
-
-        <div className="relative grid gap-2 text-sm text-ink-faint">
-          <p>Teachers log. Parents read. Nobody is ranked.</p>
-          <p>It sits on top of the report card. It replaces nothing.</p>
-        </div>
-      </div>
-
-      {/* ── Right: the form ─────────────────────────────────── */}
-      <div className="flex min-h-dvh flex-col justify-center px-6 py-12 sm:px-12">
-        <div className="mx-auto w-full max-w-[420px]">
-          <Link
-            to="/"
-            className="text-xs font-semibold uppercase tracking-[0.22em] text-clay lg:hidden"
-          >
-            Kidchemy
+    <div className="flex min-h-dvh flex-col bg-paper">
+      <header className="border-b border-line bg-card">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
+          <Link to="/" className="flex items-center gap-2.5">
+            <Mark size={28} />
+            <span className="font-display text-lg font-semibold text-ink">
+              Kidchemy
+            </span>
           </Link>
+          <Link to="/" className="text-sm font-semibold text-ink-faint hover:text-ink">
+            Back to the site
+          </Link>
+        </div>
+      </header>
 
-          <h1 className="mt-4 font-display text-3xl text-ink lg:mt-0">
-            {mode === 'signin' ? 'Sign in' : 'Create your account'}
-          </h1>
-          <p className="mt-1.5 text-sm text-ink-soft">
-            {mode === 'signin'
-              ? 'Two doors, one school. Pick yours.'
-              : 'Your role decides what you can see — and what you cannot.'}
-          </p>
-
-          {/* Role switch */}
-          <div
-            role="tablist"
-            aria-label="Account type"
-            className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-line bg-card p-1.5"
-          >
-            {ROLES.map((r) => {
-              const Icon = r.icon
-              const on = role === r.id
-              return (
-                <button
-                  key={r.id}
-                  role="tab"
-                  aria-selected={on}
-                  type="button"
-                  onClick={() => {
-                    setRole(r.id)
-                    setError(null)
-                  }}
-                  className={[
-                    'flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition',
-                    on
-                      ? 'bg-moss text-white'
-                      : 'text-ink-soft hover:bg-paper-2 hover:text-ink',
-                  ].join(' ')}
-                >
-                  <Icon size={16} /> {r.label}
-                </button>
-              )
-            })}
-          </div>
-          <p className="mt-2 text-xs text-ink-faint">{active.blurb}</p>
-
-          <form onSubmit={submit} className="mt-6 grid gap-4">
-            {mode === 'signup' && (
-              <Field label="Your name">
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  autoComplete="name"
-                  placeholder={role === 'teacher' ? 'Ms. Rekha Iyer' : 'Sunita Mehta'}
-                  className={inputCls}
-                />
-              </Field>
-            )}
-
-            <Field label="Email">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="you@school.edu.in"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Password">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                placeholder="At least 6 characters"
-                className={inputCls}
-              />
-            </Field>
-
-            {mode === 'signup' && (
-              <Field label={active.codeLabel} hint={active.codeHint}>
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  required={active.codeRequired}
-                  placeholder={role === 'teacher' ? 'VIDYA-6A' : 'ARYAN-4821'}
-                  className={`${inputCls} kc-tnum tracking-wider`}
-                />
-              </Field>
-            )}
-
-            {error && (
-              <p className="flex items-start gap-2 rounded-xl border border-alert/30 bg-alert/10 px-3.5 py-3 text-sm text-alert">
-                <CircleAlert size={16} className="mt-0.5 shrink-0" />
-                {error}
-              </p>
-            )}
-            {notice && (
-              <p className="flex items-start gap-2 rounded-xl border border-moss/30 bg-moss-tint px-3.5 py-3 text-sm text-moss-dark">
-                <Mail size={16} className="mt-0.5 shrink-0" />
-                {notice}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="mt-1 inline-flex items-center justify-center gap-2 rounded-full bg-moss px-6 py-3 font-semibold text-white transition hover:bg-moss-dark disabled:cursor-not-allowed disabled:bg-ink-faint/40"
-            >
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+      <main className="flex flex-1 items-center justify-center px-5 py-10">
+        <div className="w-full max-w-md">
+          <div className="mb-6 text-center">
+            <h1 className="font-display text-3xl font-semibold text-ink">
+              {mode === 'signin' ? 'Sign in' : 'Create your account'}
+            </h1>
+            <p className="mt-2 text-sm text-ink-soft">
               {mode === 'signin'
-                ? `Sign in as ${active.label.toLowerCase()}`
-                : `Create ${active.label.toLowerCase()} account`}
-            </button>
-          </form>
+                ? 'Teachers land on their class. Parents land on their child.'
+                : 'Two kinds of account, and they see very different things.'}
+            </p>
+          </div>
 
-          <p className="mt-5 text-sm text-ink-soft">
-            {mode === 'signin' ? "Don't have an account yet? " : 'Already have one? '}
+          {noProfile && (
+            <Callout tone="warn" icon={Info} className="mb-4">
+              You are signed in, but your account has no role attached yet. Sign
+              out and sign up again with a school or child code, or ask your
+              coordinator to set the role for you.
+            </Callout>
+          )}
+          {notice && (
+            <Callout tone="moss" className="mb-4">
+              {notice}
+            </Callout>
+          )}
+
+          <Card>
+            <form onSubmit={submit} className="space-y-4">
+              {mode === 'signup' && (
+                <div>
+                  <p className="kc-eyebrow mb-2">Which are you?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ROLES.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setRole(r.id)}
+                        className={cx(
+                          'rounded-[12px] border p-3 text-left transition-colors',
+                          role === r.id
+                            ? 'border-accent bg-accent-tint'
+                            : 'border-line hover:border-ink-faint/45'
+                        )}
+                      >
+                        <r.icon
+                          size={17}
+                          className={cx(
+                            'mb-1.5',
+                            role === r.id ? 'text-accent-ink' : 'text-ink-faint'
+                          )}
+                        />
+                        <span className="block text-sm font-bold text-ink">
+                          {r.label}
+                        </span>
+                        <span className="mt-0.5 block text-2xs leading-snug text-ink-faint">
+                          {r.blurb}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {mode === 'signup' && (
+                <Field label="Your name" required>
+                  <Input
+                    value={form.fullName}
+                    onChange={set('fullName')}
+                    autoComplete="name"
+                    placeholder="Rekha Iyer"
+                  />
+                </Field>
+              )}
+
+              <Field label="Email" required>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={set('email')}
+                  autoComplete="email"
+                  required
+                  placeholder="you@school.edu.in"
+                />
+              </Field>
+
+              <Field
+                label="Password"
+                hint={mode === 'signup' ? 'At least six characters.' : undefined}
+                required
+              >
+                <Input
+                  type="password"
+                  value={form.password}
+                  onChange={set('password')}
+                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  required
+                  minLength={6}
+                />
+              </Field>
+
+              {mode === 'signup' && (
+                <Field
+                  label={roleMeta.codeLabel}
+                  hint={roleMeta.codeHint}
+                  required={role === 'teacher'}
+                >
+                  <Input
+                    value={form.code}
+                    onChange={set('code')}
+                    placeholder={roleMeta.codePlaceholder}
+                    className="kc-tnum tracking-wider"
+                    required={role === 'teacher'}
+                  />
+                </Field>
+              )}
+
+              {error && (
+                <p className="rounded-[10px] border border-alert/25 bg-alert-tint px-3 py-2 text-sm text-alert">
+                  {error}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={busy}
+                className="w-full justify-center"
+              >
+                {mode === 'signin' ? 'Sign in' : 'Create account'}
+              </Button>
+            </form>
+          </Card>
+
+          <p className="mt-4 text-center text-sm text-ink-soft">
+            {mode === 'signin' ? "No account yet? " : 'Already have one? '}
             <button
               type="button"
               onClick={() => {
                 setMode(mode === 'signin' ? 'signup' : 'signin')
                 setError(null)
-                setNotice(null)
               }}
-              className="font-semibold text-moss underline underline-offset-4"
+              className="font-semibold text-accent-ink underline underline-offset-4"
             >
               {mode === 'signin' ? 'Create one' : 'Sign in'}
             </button>
           </p>
 
-          <div className="mt-8 rounded-2xl border border-line bg-card px-4 py-3.5 text-xs leading-relaxed text-ink-faint">
-            <p className="font-semibold text-ink-soft">Pilot codes</p>
-            <p className="mt-1">
-              Teacher: <span className="kc-tnum text-ink">VIDYA-6A</span> · Parent
-              of Aryan: <span className="kc-tnum text-ink">ARYAN-4821</span> ·
-              Parent of Priya: <span className="kc-tnum text-ink">PRIYA-7136</span>
-            </p>
-          </div>
+          <p className="mt-6 flex items-start gap-2 text-xs leading-relaxed text-ink-faint">
+            <ShieldCheck size={14} className="mt-0.5 shrink-0" />
+            A teacher account needs a school code, so the class roster is never
+            open to whoever finds the link. A parent only ever sees the child
+            whose code they hold, and only the observations a teacher chose to
+            share.
+          </p>
         </div>
-      </div>
+      </main>
     </div>
-  )
-}
-
-const inputCls =
-  'w-full rounded-xl border border-line bg-card px-4 py-3 text-ink outline-none transition placeholder:text-ink-faint focus:border-moss'
-
-function Field({ label, hint, children }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
-        {label}
-      </span>
-      <span className="mt-2 block">{children}</span>
-      {hint && <span className="mt-1.5 block text-xs text-ink-faint">{hint}</span>}
-    </label>
   )
 }

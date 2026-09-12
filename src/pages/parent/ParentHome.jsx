@@ -1,20 +1,30 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  Loader2,
-  LogOut,
-  Plus,
-  Sparkles,
-} from 'lucide-react'
+import { ArrowRight, LogOut, Plus, Sparkles } from 'lucide-react'
 import { useAuth, readableAuthError } from '../../data/auth.jsx'
 import { useStore } from '../../data/store.jsx'
-import { topDimensions, evidenceSummary } from '../../data/derive.js'
-import { Sprig, Arc } from '../../components/Ornament.jsx'
+import {
+  evidenceSummary,
+  profileDepth,
+  topDimensions,
+} from '../../data/derive.js'
+import { Mark } from '../../components/AppShell.jsx'
+import {
+  Avatar,
+  Badge,
+  Button,
+  Callout,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  Meter,
+} from '../../components/ui.jsx'
+import { classLabel } from '../../data/roster.js'
 
 export default function ParentHome() {
   const { profile, signOut, linkChild } = useAuth()
-  const { students, refresh, loading } = useStore()
+  const { students, refresh, loading, school } = useStore()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -40,82 +50,92 @@ export default function ParentHome() {
 
   return (
     <div className="min-h-dvh bg-paper">
-      <div className="border-b border-line bg-paper/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
-          <Link to="/" className="text-xs font-semibold uppercase tracking-[0.22em] text-clay">
-            Kidchemy
+      <header className="border-b border-line bg-card">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-5 py-3.5">
+          <Link to="/" className="flex items-center gap-2">
+            <Mark size={26} />
+            <span className="font-display text-base font-semibold text-ink">
+              Kidchemy
+            </span>
           </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-ink-faint hover:text-ink"
-          >
-            <LogOut size={13} /> Sign out
-          </button>
+          <Button size="sm" variant="quiet" icon={LogOut} onClick={signOut}>
+            Sign out
+          </Button>
         </div>
-      </div>
+      </header>
 
-      <main className="mx-auto w-full max-w-4xl px-5 pb-24 pt-10 sm:px-8">
-        <header className="relative overflow-hidden rounded-3xl border border-line bg-card px-6 py-9 sm:px-10">
-          <Arc className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 text-clay opacity-60" />
-          <Sprig className="pointer-events-none absolute -bottom-8 right-6 h-44 w-28 text-moss opacity-50" />
-          <p className="relative text-xs font-semibold uppercase tracking-[0.2em] text-clay">
-            Parent
-          </p>
-          <h1 className="relative mt-3 font-display text-3xl leading-tight text-ink sm:text-[40px]">
-            {firstName ? `Hello, ${firstName}.` : 'Hello.'}
+      <main className="mx-auto w-full max-w-3xl px-5 py-10">
+        <div className="mb-8">
+          <p className="kc-eyebrow">{school?.name || 'Your school'}</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+            {firstName ? `Hello, ${firstName}` : 'Your children'}
           </h1>
-          <p className="relative mt-3 max-w-md text-[15px] leading-relaxed text-ink-soft">
-            Everything here was written by a teacher who was in the room. No
-            ranks, no percentiles, nothing generated.
+          <p className="mt-2 max-w-lg text-base text-ink-soft">
+            One page per child, written from what their teachers have actually
+            watched happen. Not a grade, and not a ranking.
           </p>
-        </header>
+        </div>
 
-        {loading && !students.length && (
-          <p className="mt-8 flex items-center gap-2 text-sm text-ink-faint">
-            <Loader2 size={15} className="animate-spin" /> Fetching profiles…
-          </p>
-        )}
-
-        {students.length > 0 && (
-          <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+        {students.length === 0 && !loading ? (
+          <EmptyState
+            icon={Sparkles}
+            title="No child linked yet"
+            body="Enter the code printed on the sticker on your child's report card. It looks something like ABCD-1234."
+            action={
+              <Button variant="primary" icon={Plus} onClick={() => setAdding(true)}>
+                Enter a code
+              </Button>
+            }
+          />
+        ) : (
+          <ul className="space-y-3">
             {students.map((s) => {
-              const shared = s.observations.filter(
-                (o) => !o.visibility || o.visibility === 'shared'
+              const shared = (s.observations || []).filter(
+                (o) => (o.visibility || 'shared') === 'shared'
               )
+              const depth = profileDepth(shared)
               const top = topDimensions(shared, 3)
               return (
                 <li key={s.id}>
                   <Link
                     to={`/profile/${s.id}`}
-                    className="group flex h-full flex-col rounded-2xl border border-line bg-card p-6 transition hover:border-moss"
+                    className="group block rounded-[14px] border border-line bg-card p-5 shadow-[var(--shadow-card)] transition-all hover:border-accent/40 hover:shadow-[var(--shadow-raised)]"
                   >
-                    <h2 className="font-display text-2xl text-ink">{s.name}</h2>
-                    <p className="mt-1 text-sm text-ink-faint">
-                      {s.className} · {s.school}
-                    </p>
-                    {top.length > 0 && (
-                      <ul className="mt-4 flex flex-wrap gap-1.5">
-                        {top.map((d) => (
-                          <li
-                            key={d.id}
-                            className="rounded-full bg-moss-tint px-2.5 py-1 text-xs font-medium text-moss-dark"
-                          >
-                            {d.label}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <p className="mt-4 text-xs leading-relaxed text-ink-faint">
-                      {evidenceSummary(shared)}
-                    </p>
-                    <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-moss">
-                      Read the profile
+                    <div className="flex items-center gap-4">
+                      <Avatar name={s.name} size={48} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display text-xl font-semibold text-ink group-hover:text-accent">
+                          {s.name}
+                        </p>
+                        <p className="text-xs text-ink-faint">
+                          {classLabel(s)} - {s.school}
+                        </p>
+                      </div>
                       <ArrowRight
-                        size={15}
-                        className="transition group-hover:translate-x-0.5"
+                        size={18}
+                        className="shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
                       />
-                    </span>
+                    </div>
+
+                    {top.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {top.map((d) => (
+                          <Badge key={d.id} tone="moss">
+                            {d.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3">
+                      <Meter
+                        pct={depth.score}
+                        tone={depth.score >= 60 ? 'good' : depth.score >= 25 ? 'warn' : 'faint'}
+                      />
+                      <p className="mt-1.5 text-xs text-ink-faint">
+                        {evidenceSummary(shared)}
+                      </p>
+                    </div>
                   </Link>
                 </li>
               )
@@ -123,56 +143,55 @@ export default function ParentHome() {
           </ul>
         )}
 
-        {!loading && !students.length && (
-          <div className="mt-8 rounded-2xl border border-dashed border-line px-6 py-10 text-center">
-            <Sparkles size={22} className="mx-auto text-clay" />
-            <p className="mt-3 text-[15px] text-ink-soft">
-              No child is linked to this account yet. Add the code printed on
-              your child's report-card sticker.
-            </p>
-          </div>
-        )}
-
-        {/* Claim another child */}
-        <div className="mt-8 rounded-2xl border border-line bg-card p-6">
-          {adding || !students.length ? (
-            <form onSubmit={claim} className="flex flex-wrap items-end gap-3">
-              <label className="min-w-[200px] flex-1">
-                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                  Child access code
-                </span>
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="ARYAN-4821"
-                  className="kc-tnum mt-2 w-full rounded-xl border border-line bg-paper px-4 py-2.5 tracking-wider outline-none focus:border-moss"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={busy || !code.trim()}
-                className="inline-flex items-center gap-2 rounded-full bg-moss px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-moss-dark disabled:bg-ink-faint/40"
-              >
-                {busy ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
-                Link this child
-              </button>
-              {error && (
-                <p className="w-full text-sm text-alert">{error}</p>
-              )}
-              <p className="w-full text-xs text-ink-faint">
-                The code is on the sticker your school glued to the report card.
-              </p>
-            </form>
+        {/* Add another child */}
+        <div className="mt-8">
+          {adding || students.length === 0 ? (
+            <Card>
+              <form onSubmit={claim} className="space-y-3">
+                <Field
+                  label="Code from the report card sticker"
+                  error={error}
+                  hint="Not case sensitive. If it does not work, the school can reprint it."
+                >
+                  <Input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="ABCD-1234"
+                    autoFocus
+                    className="kc-tnum tracking-wider"
+                  />
+                </Field>
+                <div className="flex justify-end gap-2">
+                  {students.length > 0 && (
+                    <Button type="button" onClick={() => setAdding(false)}>
+                      Cancel
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={busy}
+                    disabled={!code.trim()}
+                  >
+                    Add child
+                  </Button>
+                </div>
+              </form>
+            </Card>
           ) : (
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="inline-flex items-center gap-2 text-sm font-medium text-moss"
-            >
-              <Plus size={15} /> Link another child
-            </button>
+            <Button icon={Plus} onClick={() => setAdding(true)}>
+              Add another child
+            </Button>
           )}
         </div>
+
+        <Callout tone="neutral" className="mt-8">
+          <p className="text-xs">
+            You only see observations a teacher chose to share with you. Staff
+            keep some notes for the school alone, which is what lets them record
+            honest things about a hard week without it becoming a report.
+          </p>
+        </Callout>
       </main>
     </div>
   )

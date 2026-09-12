@@ -1,54 +1,109 @@
 @import "tailwindcss";
 
+/* ══════════════════════════════════════════════════════════════════
+   Kidchemy design tokens
+   Warm, high contrast, and readable on a cheap Android screen in a
+   corridor, which is where this product is actually used.
+   ══════════════════════════════════════════════════════════════════ */
+
 @theme {
-  /* ─── Surfaces & ink ─────────────────────────────────────── */
-  --color-paper: #faf8f4;
-  --color-paper-2: #f3efe7;
-  --color-paper-3: #ece6da;
+  /* ─── Surfaces and ink ──────────────────────────────────────── */
+  --color-paper: #f6f4ef;
+  --color-paper-2: #efebe2;
+  --color-paper-3: #e6e0d4;
   --color-card: #ffffff;
-  --color-ink: #1c1c1c;
-  --color-ink-soft: #5b574f;
-  --color-ink-faint: #8d877c;
-  --color-line: #e5dfd4;
-  --color-line-soft: #efeae0;
+  --color-ink: #16130d;
+  --color-ink-soft: #56514a;
+  --color-ink-faint: #857f74;
+  --color-line: #e4dfd4;
+  --color-line-soft: #f0ece3;
 
-  /* ─── Brand accents (UI, not data) ───────────────────────── */
-  --color-moss: #4a7c59;
-  --color-moss-dark: #3a6246;
-  --color-moss-tint: #e8f0e9;
-  --color-clay: #c17b4e;
-  --color-clay-dark: #a2603a;
-  --color-clay-tint: #f6e9de;
+  /* ─── Primary accent. Warm terracotta, high enough chroma to
+         carry a button and survive a projector. ───────────────── */
+  --color-accent: #d15b2a;
+  --color-accent-hover: #ba4c1e;
+  --color-accent-ink: #8f3a16;
+  --color-accent-tint: #fdeee5;
+  --color-accent-line: #f5d6c3;
 
-  /* ─── Chart series (validated: OKLab CVD ΔE ≥ 12 on paper) ─
-     Assigned in fixed order and never cycled. The UI moss/clay
-     are too low-chroma and too close under protanopia to carry
-     data, so charts use these instead. */
+  /* ─── Secondary. Moss, for calm and for the parent side. ────── */
+  --color-moss: #3d7a53;
+  --color-moss-hover: #326244;
+  --color-moss-tint: #e8f1ea;
+  --color-moss-line: #cfe2d5;
+
+  /* ─── Back-compat aliases so older components keep rendering
+         while the pages migrate to accent/moss. ─────────────────── */
+  --color-clay: #d15b2a;
+  --color-clay-dark: #ba4c1e;
+  --color-clay-tint: #fdeee5;
+  --color-moss-dark: #326244;
+
+  /* ─── Chart series (OKLab CVD separation checked on paper) ──
+         Assigned in fixed order and never cycled. The UI accents are
+         too close under protanopia to carry data. ──────────────── */
   --color-series-1: #1f7a4a;
   --color-series-2: #7a4fa8;
   --color-series-3: #b8621f;
   --color-series-4: #0b6f9e;
 
-  /* ─── Sequential ramp — one hue, light → dark ────────────── */
-  --color-ramp-0: #f4f1ea;
+  /* ─── Sequential ramp, one hue, light to dark ───────────────── */
+  --color-ramp-0: #f2efe8;
   --color-ramp-1: #dfeae1;
   --color-ramp-2: #bcd9c6;
   --color-ramp-3: #85bb9b;
   --color-ramp-4: #479a6d;
   --color-ramp-5: #1f7a4a;
 
-  /* ─── Status (reserved — never reused as a series) ───────── */
+  /* ─── Status. Reserved, never reused as a series. ───────────── */
   --color-good: #1f7a4a;
-  --color-warn: #b8621f;
+  --color-good-tint: #e6f1eb;
+  --color-warn: #a8641a;
+  --color-warn-tint: #fbf0dd;
   --color-alert: #a63d2f;
+  --color-alert-tint: #fbe9e6;
+  --color-info: #0b6f9e;
+  --color-info-tint: #e4f1f7;
 
-  --font-display: "DM Serif Display", Georgia, "Times New Roman", serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    sans-serif;
+  /* ─── Type ──────────────────────────────────────────────────── */
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+
+  --text-2xs: 0.6875rem;   /* 11px, labels and counts only */
+  --text-2xs--line-height: 1.4;
+  --text-xs: 0.75rem;      /* 12px */
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.8125rem;    /* 13px, table body */
+  --text-sm--line-height: 1.55;
+  --text-base: 0.9375rem;  /* 15px, UI default */
+  --text-base--line-height: 1.6;
+  --text-lg: 1.0625rem;    /* 17px, reading body */
+  --text-lg--line-height: 1.65;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 1.9375rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 2.5rem;
+  --text-4xl--line-height: 1.12;
+  --text-5xl: 3.25rem;
+  --text-5xl--line-height: 1.05;
+
+  --radius-card: 14px;
+
+  --shadow-card: 0 1px 2px rgba(22, 19, 13, 0.04),
+    0 1px 3px rgba(22, 19, 13, 0.03);
+  --shadow-raised: 0 2px 4px rgba(22, 19, 13, 0.05),
+    0 8px 24px -8px rgba(22, 19, 13, 0.1);
+  --shadow-pop: 0 8px 16px -4px rgba(22, 19, 13, 0.1),
+    0 24px 48px -12px rgba(22, 19, 13, 0.14);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -56,20 +111,42 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-moss);
-  outline-offset: 2px;
-  border-radius: 6px;
+/* Fraunces has a soft, slightly wonky default. Dial the wonk down for
+   headings so it stays warm without becoming hard to read at 15px. */
+.font-display {
+  font-variation-settings: "SOFT" 20, "WONK" 0;
+  letter-spacing: -0.012em;
 }
 
-/* Quiet scrollbars so the sidebar and long tables don't shout. */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Quiet scrollbars so the sidebar and long tables do not shout. */
 .kc-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
@@ -86,24 +163,45 @@ body {
   background: transparent;
 }
 
-/* Numbers that must line up in columns — not headline figures. */
+/* Numbers that must line up in columns. Not headline figures. */
 .kc-tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* A label style used on every card header and table head, so the eye
+   learns it once. */
+.kc-eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Long-form reading column, used on the parent profile. */
+.kc-prose {
+  font-size: var(--text-lg);
+  line-height: 1.7;
+  color: var(--color-ink-soft);
+  max-width: 62ch;
+}
+.kc-prose strong {
+  color: var(--color-ink);
+  font-weight: 600;
 }
 
 @keyframes kc-rise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-
 .kc-rise {
-  animation: kc-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: kc-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes kc-fade {
@@ -115,12 +213,30 @@ body {
   }
 }
 .kc-fade {
-  animation: kc-fade 0.25s ease-out both;
+  animation: kc-fade 0.22s ease-out both;
+}
+
+@keyframes kc-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.kc-sheet {
+  animation: kc-sheet 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .kc-rise,
-  .kc-fade {
+  .kc-fade,
+  .kc-sheet {
     animation: none;
   }
 }
@@ -128,8 +244,15 @@ body {
 @media print {
   body {
     background: #fff;
+    font-size: 11pt;
   }
   .print\:hidden {
     display: none !important;
+  }
+  .kc-page-break {
+    break-after: page;
+  }
+  .kc-avoid-break {
+    break-inside: avoid;
   }
 }

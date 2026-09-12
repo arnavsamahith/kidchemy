@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../data/auth.jsx'
 
-export function FullPageSpinner({ label = 'Loading…' }) {
+export function FullPageSpinner({ label = 'Loading' }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-paper text-ink-faint">
       <Loader2 size={22} className="animate-spin" />
@@ -11,16 +11,25 @@ export function FullPageSpinner({ label = 'Loading…' }) {
   )
 }
 
+function homeFor(role) {
+  if (role === 'admin') return '/admin'
+  if (role === 'teacher') return '/teacher'
+  return '/parent'
+}
+
 /**
  * Gate a route on being signed in, and optionally on a role.
- * Sends people who are signed in but on the wrong side of the app to
- * their own home rather than to a dead end.
+ * Sends people who are signed in but on the wrong side of the app to their
+ * own home rather than to a dead end.
+ *
+ * role="teacher" also admits an admin, because a superadmin who cannot open
+ * the screen they are configuring is not much use.
  */
 export default function RequireRole({ role, children }) {
   const { ready, session, profile } = useAuth()
   const location = useLocation()
 
-  if (!ready) return <FullPageSpinner label="Checking your sign-in…" />
+  if (!ready) return <FullPageSpinner label="Checking your sign-in" />
 
   if (!session) {
     return (
@@ -38,8 +47,10 @@ export default function RequireRole({ role, children }) {
     return <Navigate to="/login?state=no-profile" replace />
   }
 
-  if (role && profile.role !== role) {
-    return <Navigate to={profile.role === 'teacher' ? '/teacher' : '/parent'} replace />
+  if (role) {
+    const allowed =
+      profile.role === role || (role === 'teacher' && profile.role === 'admin')
+    if (!allowed) return <Navigate to={homeFor(profile.role)} replace />
   }
 
   return children
