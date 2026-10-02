@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import { Printer, QrCode, ShieldCheck } from 'lucide-react'
-import AppShell from '../../components/AppShell.jsx'
+import AppShell, { Mark } from '../../components/AppShell.jsx'
 import {
   Button,
   Callout,
@@ -38,7 +38,7 @@ function Sticker({ student, school }) {
   return (
     <div className="kc-avoid-break flex w-[214px] flex-col items-center rounded-[14px] border border-line bg-white p-4 text-center">
       <div className="flex items-center gap-1.5">
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded-[5px] bg-accent" />
+        <Mark size={16} />
         <p className="font-display text-base font-semibold leading-none text-ink">
           Kidchemy
         </p>

@@ -50,8 +50,10 @@ export function rampStep(score) {
 }
 
 export function rampInk(step) {
-  // Keep text legible inside the cell: ink on the pale steps, paper on dark.
-  return step >= 4 ? 'var(--color-paper)' : 'var(--color-ink)'
+  // Keep text legible inside the cell: ink on the pale steps, paper on the
+  // darkest one only. Step 4 measures 5.75:1 against ink but 2.93:1 against
+  // paper, so it stays on ink; step 5 is the reverse.
+  return step >= 5 ? 'var(--color-paper)' : 'var(--color-ink)'
 }
 
 /* ── Teacher-visible observation set ────────────────────────── */

@@ -1,4 +1,4 @@
-# Pehchaan, Child Profile Platform
+# Kidchemy, Child Profile Platform
 ## Complete Product Brief + Build Prompt
 
 ---
@@ -21,7 +21,7 @@ The result: parents coach grades. Schools rank children. And an entire generatio
 
 ## WHAT WE'RE BUILDING
 
-**Pehchaan** is a living child profile platform, a layer on top of the existing school system that captures what a child *actually is*, not just what they scored.
+**Kidchemy** is a living child profile platform, a layer on top of the existing school system that captures what a child *actually is*, not just what they scored.
 
 It works like this:
 
@@ -107,7 +107,7 @@ Conversation starters that open dialogue instead of interrogation:
 ---
 
 ### 3. QR Code Integration
-Every school that uses Pehchaan gets a QR sticker / print template that goes on the physical report card. When scanned:
+Every school that uses Kidchemy gets a QR sticker / print template that goes on the physical report card. When scanned:
 - First-time parents land on a warm onboarding screen: "Here's what we discovered about [Child Name] this term"
 - Returns a unique, password-protected profile page
 - Works on any smartphone, no app download required
@@ -182,7 +182,7 @@ Paste this into a fresh Claude Pro session:
 ---
 
 ```
-I want to build a web platform called Pehchaan, a child profile platform for schools.
+I want to build a web platform called Kidchemy, a child profile platform for schools.
 
 The core idea: teachers fill in lightweight observations about each student, and parents see a beautiful, human profile of their child, not grades, but insights about who their child is, how they learn, what they're good at, and where they could go.
 

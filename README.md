@@ -72,7 +72,8 @@ why the profile says something, there is an answer.
 
 `docs/PEDAGOGY.md` explains which claims about children this product makes,
 where each comes from, and which popular ideas it deliberately refuses.
-`docs/ROLLOUT.md` is how to get it into schools.
+`docs/ROLLOUT.md` is how to get it into schools. `docs/BRAND.md` is the mark,
+the palette and the type, including why the chart colours are what they are.
 
 ---
 

@@ -13,7 +13,6 @@ import {
   Search,
   Settings,
   Shield,
-  Sparkles,
   TrendingUp,
   Users,
   X,
@@ -57,14 +56,69 @@ function railFor(role) {
 
 /* ─── Brand ──────────────────────────────────────────────────── */
 
-export function Mark({ size = 28 }) {
+/**
+ * The Kidchemy mark: a K whose upper arm is a leaf.
+ * `tone` picks the lockup. "tile" is the app-icon form (teal block, white
+ * mark) used in the rail and the header; "bare" is the ink-and-teal mark for
+ * light surfaces; "light" is the reversed mark for dark ones; "white" is
+ * the all-white mark for use over the brand teal.
+ */
+export function Mark({ size = 28, tone = 'tile' }) {
+  const stroke =
+    tone === 'tile' || tone === 'light' || tone === 'white'
+      ? '#FFFFFF'
+      : 'currentColor'
+  const leaf =
+    tone === 'tile' || tone === 'white' ? '#FFFFFF' : 'var(--color-accent)'
+  const leafOpacity = tone === 'tile' || tone === 'white' ? 0.92 : 1
+
+  const mark = (
+    <svg
+      viewBox="0 0 64 64"
+      width={tone === 'tile' ? Math.round(size * 0.72) : size}
+      height={tone === 'tile' ? Math.round(size * 0.72) : size}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M17 34 C23 21 34 13 47 11 C46 26 37 35 24 36 Z"
+        fill={leaf}
+        fillOpacity={leafOpacity}
+      />
+      <path
+        d="M17 11 V53"
+        stroke={stroke}
+        strokeWidth="5.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M17 34 L39 53"
+        stroke={stroke}
+        strokeWidth="5.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  )
+
+  if (tone !== 'tile') {
+    return (
+      <span
+        className="inline-flex shrink-0 items-center justify-center text-ink"
+        style={{ width: size, height: size }}
+      >
+        {mark}
+      </span>
+    )
+  }
+
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center rounded-[9px] bg-accent text-white"
+      className="inline-flex shrink-0 items-center justify-center rounded-[9px] bg-accent"
       style={{ width: size, height: size }}
-      aria-hidden="true"
     >
-      <Sparkles size={Math.round(size * 0.54)} strokeWidth={2.3} />
+      {mark}
     </span>
   )
 }

@@ -1,155 +1,207 @@
-# Pehchaan, 5-slide pitch deck brief
-### Audience: school principals · Stage: idea + working prototype
-### Paste the slide blocks below straight into Claude Design.
+# Kidchemy pitch deck brief (v2)
+### Audience: school principals, academic coordinators, school owners
+### Stage: working product, looking for two founding pilot schools
+### Length: 10 slides. In a 20-minute meeting, show 1, 2, 4, 5, 7, 9, 10.
+
+Paste the global direction first, then the slides, into Claude Design (or your slide tool).
+
+---
+
+## WHAT CHANGED FROM v1
+
+- Covers **KG to Class 8** and all four people a school serves: school leaders, teachers, parents, children. Each gets its own slide.
+- Adds a **"Why now"** slide built on accurate HPC facts, and an **HPC** slide, because that is what principals buy.
+- Uses the **growth tree** from the new landing page as the deck's signature visual.
+- One sample child throughout: **Meera, Class 3B**.
+- The ask is concrete: a one-term pilot with agreed success criteria and a founding price.
+- No AI claims. Every sentence the product writes traces to a teacher's observation.
 
 ---
 
 ## GLOBAL DESIGN DIRECTION (paste this first)
 
-Warm, human, editorial, closer to a beautifully designed annual report or a
-children's-book endpaper than to an edtech dashboard. Generous whitespace.
-One idea per slide. Big type, few words.
+Editorial and calm, like an architecture studio's portfolio or a beautifully printed annual report. Not edtech. Very large serif headlines, generous whitespace, one idea per slide, thin rules, small numbered section labels ("01 ——— THE PROBLEM"). Must look like the same brand as the website.
 
-- Background: warm off-white `#FAF8F4`
-- Primary accent (moss green): `#4A7C59`
-- Secondary accent (warm clay): `#C17B4E`
-- Text: charcoal `#1C1C1C`, muted text `#6B6459`
-- Headings: **DM Serif Display**. Body/labels: **Inter**.
-- Rounded cards (16 to 24px), soft shadows, no harsh borders, no grid lines.
-- Decoration: abstract botanical/geometric SVG shapes, hand-drawn feeling.
-  **No stock photos of children. No clipart. No blue-and-grey.**
-- Every slide: small kicker label (uppercase, letter-spaced, clay) → serif
-  headline → one supporting line → 3 short blocks or one visual. That's it.
+**Logo:** the Sprout K (a K whose upper arm is a leaf). Lockup (mark + "Kidchemy" wordmark) small, top-left on every slide. `kidchemy-mark.svg` on light, `kidchemy-mark-light.svg` on dark, all-white mark on teal.
 
----
+**Colour**
+- Paper background `#F6F4EF`, card `#FFFFFF`, soft paper `#EFEBE2`
+- Primary deep teal `#0E6E70` (one full-bleed teal slide is allowed: slide 6)
+- Teal tint `#E3F0F0`, light teal ramp `#A2D4D5` / `#2C9EA1`
+- Secondary moss `#3D7A53`, moss tint `#E8F1EA`
+- Ink `#16130D`, muted `#56514A`, faint `#857F74`, lines `#E4DFD4`
+- **No orange anywhere. No blue-and-grey.**
 
-## SLIDE 1, THE PROBLEM
+**Type**
+- Headlines: **Source Serif 4** Semibold, tracking -0.015em, very large (60 to 80pt on 16:9).
+- Everything else: **Plus Jakarta Sans** (labels uppercase, bold, letter-spaced 0.16em, 10 to 11pt).
+- Never body copy in the serif; never a headline in the sans.
 
-**Kicker:** THE PROBLEM
-**Headline:** A child is not a number.
-**Sub-line:** A report card compares every child to the same benchmark and returns a rank. It says where a child stands. It says nothing about who they are.
+**Shapes and decoration**
+- Cards: 14 to 22px radius, soft shadow, no harsh borders.
+- Section label on every slide: small teal number, a short rule, then an uppercase label.
+- Decoration: the growth tree, leaf shapes from the logo, thin botanical lines. **No stock photos of children, no clipart.**
 
-**Three small cards (icon + 3-word title + one line):**
-- **The student**, internalises a score as an identity.
-- **The parent**, is handed a scorecard, so they chase marks.
-- **The teacher**, sees everything, and has nowhere to put it.
-
-**Visual:** an oversized faint `58%` on the left, dissolving into seven small
-warm dots on the right labelled Curiosity · Logic · Creativity · Empathy ·
-Persistence · Collaboration · Communication.
+**Copy rules**
+- Strengths are verbs, never labels: "rebuilds it until it holds", never "creative child".
+- No em-dashes. Short sentences.
+- Do not add text beyond what is written below.
 
 ---
 
-## SLIDE 2, THE IDEA
+## SLIDE 1: TITLE
 
-**Kicker:** THE IDEA
-**Headline:** Pehchaan, a living profile of every child, reached from the report card you already print.
-**Sub-line:** Teachers log light, structured observations. Those build over the term into a warm, plain-language portrait of the child. Parents open it by scanning a QR code on the physical report card.
-
-**Three chips in a row:**
-- Nothing to replace
-- Nothing to download
-- One sticker on the report card
-
-**Visual:** three-step flow, left to right, teacher tapping tags → report card
-with a QR sticker → a phone showing a warm profile page.
-
-**Optional footer line:** It does not touch grades. It sits alongside them.
+**Label:** KIDCHEMY
+**Headline (4 lines, last two in teal):** Every child is / more than the / number on their / report card.
+**Sub-line:** A living portrait of every child, built from two minutes a week of teacher taps. NEP 2020 · HPC-ready · KG to Class 8.
+**Visual (right half):** the growth tree. A faint, blurred "58%" sits behind a tree whose seven branches end in dots labelled Curiosity, Logic, Communication, Creativity, Persistence, Empathy, Collaboration. Dot size shows the band (Collaboration is a dotted twig: "not yet observed"). Two or three leaves along the branches in teal and moss.
+**Footer:** Arnav · Founder · [college] · [email]
 
 ---
 
-## SLIDE 3, WHAT IT COSTS YOUR TEACHERS
+## SLIDE 2: THE PROBLEM
 
-**Kicker:** FOR YOUR TEACHERS
+**Label:** 01 · THE PROBLEM
+**Headline:** A child who scores 58% gets called weak.
+**Sub-line:** That same child might ask the best questions in the room. The report card can't say so.
+
+**Three cards in a row (icon + title + 2 lines):**
+- **The teacher** · Sees forty children deeply, every day. At the parent meeting she has marks, memory and a queue at the door.
+- **The parent** · Gets a percentage twice a year. Chases marks, because marks are the only signal anyone gives them.
+- **The child** · Ranked against classmates, slowly learns to believe the number is who they are.
+
+**Visual:** an oversized "58%" on the left fading out, seven small dots on the right.
+
+---
+
+## SLIDE 3: WHY NOW
+
+**Label:** 02 · WHY NOW
+**Headline:** Schools are being asked for more than marks.
+**Sub-line:** NEP 2020 asks for a Holistic Progress Card. Almost no school has a way to fill it in.
+
+**Four short timeline points (horizontal line, dot per point):**
+- **2020** · NEP 2020 calls for holistic, 360-degree progress cards.
+- **2023** · CBSE shares foundational-stage HPC prototypes for schools to adopt or adapt.
+- **2024** · PARAKH (NCERT) releases HPC cards for Classes 3 to 5 and 6 to 8.
+- **2025** · 26 states and UTs have adopted or adapted HPC for early grades. CBSE announces it will extend HPC to Classes 6 to 8.
+
+**Callout card (moss tint):** In a 2025 study of government primary schools in Manipur, 86% of teachers said collecting and tracking evidence for the HPC was hard. The bottleneck is not belief. It is time.
+
+**Small footnote (faint, 8pt):** Sources: PARAKH/NCERT, CBSE Circular Aff.08/2023, India TV News Apr 2025, Gulf News Nov 2025, Manipur HPC feasibility study 2025.
+
+---
+
+## SLIDE 4: THE IDEA
+
+**Label:** 03 · THE IDEA
+**Headline:** One set of taps. Four people served.
+**Sub-line:** Teachers log what they notice in seconds. Kidchemy turns it into a portrait for the parent, a sheet for the PTM, and the HPC for the school.
+
+**Visual: a simple flow, left to right, thin teal lines:**
+Teacher taps (phone with name chips) → Observations build over the term (small stacked dots) → three outputs fanning out as cards: **Parent profile** · **PTM sheet** · **Holistic Progress Card**.
+
+**Footer line:** It sits beside the report card. It never replaces it. Nothing ranks one child against another.
+
+---
+
+## SLIDE 5: FOR TEACHERS
+
+**Label:** 04 · FOR TEACHERS
 **Headline:** Two minutes a week. For the whole class.
-**Sub-line:** We never ask a teacher to write about 200 children. We ask one question at a time, *"who asked a really good question this week?"*, and they tap names.
+**Sub-line:** We never ask a teacher to write about forty children. We ask one question at a time, and she taps names.
 
-**Four stat tiles (big number, small label):**
-- **~2 min** per class, per week
-- **7** prompts, taps only
-- **0** essays, 0 extra paperwork
-- **Any phone**, works on a slow connection
+**Four stat tiles:** **~2 min** per class, per week · **7** prompts, taps only · **0** essays · **Any phone**, slow connections fine
 
-**Visual:** one prompt card, *"Asks deep questions"*, with a row of tappable
-student-name chips underneath, three of them selected in moss green.
+**Visual:** a prompt card "Who asked a question that made the class think?" with twelve name chips (Aarav, Meera, Kabir, Ananya, Rohan, Ishita, Vihaan, Sara, Dev, Nila, Arjun, Zoya), Meera, Rohan, Vihaan and Arjun selected in teal. Footer of the card: "4 tapped · Kabir not seen in 4 weeks".
 
-**Footer line:** Nothing here is a grade. Observations never rank one child against another.
+**Footer line:** Plus a printed PTM sheet for every child: three things to praise, one to raise, two questions to ask.
 
 ---
 
-## SLIDE 4, WHAT PARENTS SEE
+## SLIDE 6: FOR SCHOOL LEADERS (full-bleed teal slide)
 
-**Kicker:** FOR YOUR PARENTS
+**Label (white):** 05 · FOR SCHOOL LEADERS
+**Headline (white):** The Holistic Progress Card, without an extra hour of writing.
+**Sub-line (white, 80%):** Every tap maps to the PARAKH domains, for the foundational, preparatory and middle stages.
+
+**Five outlined white cards in a row:** Physical · Socio-emotional · Cognitive · Language · Aesthetic & cultural
+**Under them, three pills with arrows:** Stream → Mountain → Sky ("Levels, not marks")
+
+**Three short benefits along the bottom (white):**
+- **HPC-ready** · The term card assembles itself, with self, peer and parent voice.
+- **Better PTMs** · Every teacher arrives prepared.
+- **A school parents choose** · Show families a portrait, not a mark sheet.
+
+---
+
+## SLIDE 7: FOR PARENTS
+
+**Label:** 06 · FOR PARENTS
 **Headline:** The first time someone describes their child instead of scoring them.
 
-**Six small labelled cards (2×3 grid, section names only):**
-- Who Aryan is
-- What he's good at
-- How he learns best
-- How he's growing
-- Where he could go
-- What you can do this month
+**Left: six small labelled cards (2×3):** Who Meera is · What she does well · How she's growing · At her best when · What to try this month · Questions to ask her
 
-**Pull quote in clay, serif, large:**
-> "Aryan understands more than he can write down. The gap is expression, not comprehension."
+**Pull quote (teal, serif, large):**
+> "Meera tests ideas out loud. When something puzzles her she asks the second question, and then she draws it until it makes sense."
 
-**Footer line:** Every sentence is traceable to a teacher's observation, no AI
-inventing things. When we've only seen a little, the profile says so plainly.
-It is built so it cannot become a horoscope.
+**Right: phone mockup** of the parent profile: teal header "Here's who Meera is this term.", a "What she does well" list with four-dot bands (Curiosity ●●●●, Empathy ●●●○, Persistence ●●○○), and a moss "Try this month" card.
 
-**Visual:** a phone mockup of the profile page on the right, with a strength map
-showing bands (*not yet observed · starting to show · often seen · a signature
-strength*) rather than scores.
+**Footer line:** Reached by scanning a QR code on the report card they already get. No app. Every line traces to a teacher's observation, and a thin profile says so plainly.
 
 ---
 
-## SLIDE 5, WHO I AM & THE ASK
+## SLIDE 8: FOR CHILDREN
 
-**Kicker:** THE ASK
-**Headline:** One class. One term. Free.
+**Label:** 07 · FOR CHILDREN
+**Headline:** To be seen, not sorted.
 
-**Left column, "Why I'm building this" (2 to 3 short lines, ~35 words):**
-> [ABOUT ME, replace with your own lines. Keep it plain and personal:
-> who you are, and the one thing you saw that made you build this.]
+**Visual:** two overlapping cards. Back card, dashed border, faded: "What the report card says: ~~Rank 27 of 40~~". Front card: "What Kidchemy says" with three lines, each with a small sprout icon: *Asks why, until it makes sense.* · *Rebuilds it until it holds.* · *Notices who has been left out.*
 
-**Right column, "What I need from you" (4 ticks):**
-- One teacher, one section
-- 15 minutes to train them
-- A QR sticker on this term's report cards
-- One parent-teacher meeting to watch parents scan it
-
-**Bottom strip, a 4-step timeline:**
-Week 1 setup → weekly 2-min logs → term end: QR on report cards → PTM: parents open their child's profile
-
-**Footer line:** No cost. No contract. The prototype is already built and running, I'm looking for the one classroom that tells us whether it's true.
+**Three points:** No ranks or comparisons, ever · Strengths written as things they do · No career labels before Class 9
 
 ---
 
-## ONE-PARAGRAPH VERSION (if Claude Design asks for context)
+## SLIDE 9: THE PILOT
 
-Pehchaan is a child profile platform for Indian schools. Teachers log quick,
-structured observations about their students, taps, not essays, and those
-observations build over a term into a warm, plain-language profile of each child:
-who they are, how they learn, what they're good at, how they're growing, and
-where they could go. Parents reach it by scanning a QR code printed on the
-existing physical report card, no app, no new system for the school. It doesn't
-replace grades; it makes grades a smaller part of how a child is seen. The
-profile is rule-based and evidence-backed, so every sentence traces to something
-a teacher actually observed, and a thin profile is allowed to read thin. A
-working prototype (teacher app, parent profile, QR stickers) is live; the ask is
-a free single-class pilot for one term.
+**Label:** 08 · THE PILOT
+**Headline:** One class. One term. Set up in person.
+
+**Left column: "Your school gets":** Roster import from what you already export · In-person onboarding · Printed PTM sheets and QR stickers · A term-end HPC for every child · A 2-page impact report for management
+
+**Right column: "We ask for":** A named coordinator · One or two willing teachers · 15 minutes of feedback every two weeks · Permission to attend one PTM
+
+**Bottom strip: "How we'll know it worked" (5 small tiles):** Teacher still sweeping in week 6 · 80% of children observed 5+ times · 60% of parents open the profile · Parents recognise their own child's profile · You want it for more classes
+
+**Footer line:** Free for the pilot term. Founding schools lock a founding price for 2027-28. Parents never pay.
+
+---
+
+## SLIDE 10: WHY I'M BUILDING THIS
+
+**Label:** 09 · THE BUILDER
+**Headline:** I believe every child deserves to be described, not just measured.
+
+**Left:** portrait photo (4:5, rounded 22px), caption "Arnav · Founder, Kidchemy · [college]".
+
+**Right, three short blocks:**
+- **Why** (2 to 3 lines, your own words): [the real moment that made you start this. Keep it specific: a person, a PTM, a report card.]
+- **The vision (dark ink card, white serif):** A country where every report card comes with a portrait. Where a teacher's best observations outlive the week. Where a parent's first question is "what lights her up?" and not "what did she get?"
+- **Now / Next / Always (three small tiles):** Two pilot schools this term · Every HPC written from evidence, not from memory the night before · Free for parents, no ads, children's data stays with the school
+
+**Closing line (serif italic):** "A child is not a number. Let's stop introducing them as one."
+**Contact:** [email] · [phone] · kidchemy.vercel.app (or your domain)
+
+---
+
+## ONE-PARAGRAPH CONTEXT (if the design tool asks)
+
+Kidchemy is a child profile platform for Indian schools, KG to Class 8. Teachers log quick, structured observations (taps, not essays) in about two minutes a week per class. Those build into a warm, plain-language portrait of each child for parents (reached via a QR code on the report card, no app), a printed sheet for every parent-teacher meeting, and a Holistic Progress Card mapped to the NEP 2020 / PARAKH domains for the school. It does not replace grades and never ranks children. Every sentence traces to a counted teacher observation. A working product is live; the ask is a one-term pilot with one or two classes.
 
 ---
 
 ## PROMPT TO PASTE INTO CLAUDE DESIGN
 
-> Design a 5-slide pitch deck for "Pehchaan", a child profile platform pitched
-> to school principals. Use the content below verbatim, one slide per artboard,
-> 16:9. Style: warm and editorial, not edtech, off-white `#FAF8F4` background,
-> moss green `#4A7C59` primary, warm clay `#C17B4E` accent, charcoal `#1C1C1C`
-> text, DM Serif Display headings, Inter body. Rounded cards, generous
-> whitespace, abstract botanical SVG decoration, no photos of children, no blue
-> or grey. Keep every slide visually led, big headline, one supporting line, and
-> the small blocks as cards or stat tiles. Do not add text I haven't written.
+> Design a 10-slide pitch deck for "Kidchemy", a child profile platform pitched to Indian school principals. 16:9, one slide per artboard. Use the content below verbatim and add nothing. Style: editorial and calm, like an architecture studio portfolio, not edtech. Background `#F6F4EF`, deep teal `#0E6E70` primary (slide 6 is full-bleed teal), moss `#3D7A53` secondary, ink `#16130D` text. Source Serif 4 Semibold headlines, very large; Plus Jakarta Sans for everything else. Small numbered section labels with a thin rule. Rounded cards (14 to 22px), soft shadows, generous whitespace. Signature visual: a branching "growth tree" whose seven branches end in labelled dots, with a faded "58%" behind it. Leaf shapes from the logo as decoration. No photos of children, no clipart, no orange, no blue-and-grey. Logo: the Sprout K (a K whose upper arm is a leaf), lockup top-left on every slide.
 >
-> [paste slides 1 to 5 here]
+> [paste slides 1 to 10 here]
