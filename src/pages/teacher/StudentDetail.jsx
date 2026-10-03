@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ClipboardList,
@@ -9,8 +9,11 @@ import {
   Lightbulb,
   Link2,
   MessageSquareQuote,
+  KeyRound,
   Pencil,
   Plus,
+  ShieldCheck,
+  UserX,
   Sparkles,
   Timer,
   TrendingUp,
@@ -51,6 +54,15 @@ import {
 } from '../../data/derive.js'
 import { MILESTONE_MAP, TAG_MAP, PERIODS, FREQUENCIES } from '../../data/taxonomy.js'
 import { classLabel } from '../../data/roster.js'
+import { safeHref } from '../../data/safety.js'
+import { readableAuthError } from '../../data/auth.jsx'
+import {
+  loadConsents,
+  logAccess,
+  revokeGuardian,
+  rotateAccessCode,
+  studentGuardians,
+} from '../../data/supabase.js'
 
 /* ─── The child's own voice ──────────────────────────────────── */
 
@@ -202,9 +214,9 @@ function ObservationRow({ obs, studentId }) {
             {obs.selfChosen ? ', self chosen' : ''}
           </span>
         ) : null}
-        {obs.artefactUrl ? (
+        {safeHref(obs.artefactUrl) ? (
           <a
-            href={obs.artefactUrl}
+            href={safeHref(obs.artefactUrl)}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1 font-semibold text-accent-ink hover:underline"
@@ -220,17 +232,172 @@ function ObservationRow({ obs, studentId }) {
   )
 }
 
+/* ─── Who can see this child ─────────────────────────────────────
+   Guardians linked to the child, consent history, and the two levers a
+   teacher needs when a sticker is lost or a guardian should not have
+   access any more: cut off one guardian, or reissue the code. */
+
+function AccessPanel({ student, onToast, onChanged }) {
+  const [guardians, setGuardians] = useState([])
+  const [consents, setConsents] = useState([])
+  const [busy, setBusy] = useState(null)
+  const [err, setErr] = useState(null)
+
+  const load = useCallback(async () => {
+    try {
+      const [g, c] = await Promise.all([
+        studentGuardians(student.id),
+        loadConsents(student.id).catch(() => []),
+      ])
+      setGuardians(g || [])
+      setConsents(c || [])
+      setErr(null)
+    } catch (e) {
+      setErr(readableAuthError(e))
+    }
+  }, [student.id])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const revoke = async (pid, name) => {
+    if (!window.confirm(`Remove ${name || 'this guardian'}'s access to ${student.name.split(' ')[0]}'s page? They will need the school to give it back.`)) return
+    setBusy(pid)
+    try {
+      await revokeGuardian(student.id, pid)
+      onToast({ message: 'Access removed.' })
+      load()
+    } catch (e) {
+      setErr(readableAuthError(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const rotate = async () => {
+    if (!window.confirm('Issue a new report card code? The old sticker stops working at once, and you will need to print a new one. Guardians already linked keep their access.')) return
+    setBusy('code')
+    try {
+      await rotateAccessCode(student.id)
+      onToast({ message: 'New code issued. Print a fresh sticker.' })
+      onChanged?.()
+    } catch (e) {
+      setErr(readableAuthError(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const live = guardians.filter((g) => g.consented_at && !g.revoked_at)
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+      <Card>
+        <CardHead
+          eyebrow="Guardians"
+          title={`${live.length} can read ${student.name.split(' ')[0]}'s page`}
+          subtitle="Each one entered the sticker code and the child's first name, and agreed to the notice. Nobody else outside the school can."
+        />
+        {err && (
+          <Callout tone="alert" className="mb-3">
+            {err}
+          </Callout>
+        )}
+        {guardians.length ? (
+          <ul className="divide-y divide-line-soft">
+            {guardians.map((g) => (
+              <li key={g.parent_id} className="flex items-center gap-3 py-2.5">
+                <Avatar name={g.full_name || '?'} size={30} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {g.full_name || 'Unnamed account'}
+                    {g.relationship ? (
+                      <span className="font-normal text-ink-faint"> · {g.relationship}</span>
+                    ) : null}
+                  </p>
+                  <p className="text-2xs text-ink-faint">
+                    {g.revoked_at
+                      ? `Access removed ${String(g.revoked_at).slice(0, 10)}`
+                      : g.consented_at
+                        ? `Consented ${String(g.consented_at).slice(0, 10)}`
+                        : 'Linked before consent was recorded. Waiting for them to confirm.'}
+                  </p>
+                </div>
+                {!g.revoked_at && (
+                  <Button
+                    size="sm"
+                    icon={UserX}
+                    loading={busy === g.parent_id}
+                    onClick={() => revoke(g.parent_id, g.full_name)}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-ink-faint">
+            No guardian has linked yet. Print the report card sticker to get started.
+          </p>
+        )}
+      </Card>
+
+      <div className="space-y-4">
+        <Card>
+          <CardHead
+            eyebrow="Report card code"
+            title={student.accessCode || 'No code yet'}
+            subtitle="If a sticker is lost, photographed or given to the wrong person, issue a new one. The old code stops working immediately."
+          />
+          <Button icon={KeyRound} loading={busy === 'code'} onClick={rotate}>
+            Issue a new code
+          </Button>
+        </Card>
+        <Card>
+          <CardHead eyebrow="Consent history" title="What was agreed, and when" />
+          {consents.length ? (
+            <ul className="space-y-1.5 text-xs text-ink-soft">
+              {consents.slice(0, 10).map((c) => (
+                <li key={c.id} className="flex justify-between gap-3">
+                  <span>
+                    {c.action === 'given' ? 'Consent given' : 'Consent withdrawn'}
+                    <span className="text-ink-faint"> · notice {c.notice_version}</span>
+                  </span>
+                  <span className="kc-tnum text-ink-faint">{String(c.created_at).slice(0, 10)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-ink-faint">Nothing recorded yet.</p>
+          )}
+        </Card>
+        <Callout tone="neutral" icon={ShieldCheck}>
+          Every time staff open this record, print it or export it, the school's
+          access log notes who and when.
+        </Callout>
+      </div>
+    </div>
+  )
+}
+
 /* ══════════════════════════════════════════════════════════════════ */
 
 export default function StudentDetail() {
   const { studentId } = useParams()
-  const { getStudent, setFrequency, settings } = useStore()
+  const { getStudent, setFrequency, settings, refresh } = useStore()
   const [toast, setToast] = useToast()
   const [tab, setTab] = useState('picture')
   const [selfOpen, setSelfOpen] = useState(false)
 
   const student = getStudent(studentId)
   const obs = student?.observations || []
+
+  // Opening a child's full record is logged (DPDP Rules r.6).
+  useEffect(() => {
+    if (student?.id) logAccess(student.id, 'record')
+  }, [student?.id])
 
   const data = useMemo(() => {
     if (!student) return null
@@ -299,6 +466,7 @@ export default function StudentDetail() {
             { value: 'next', label: 'What next', icon: Lightbulb },
             { value: 'hpc', label: 'Progress card', icon: ClipboardList },
             { value: 'timeline', label: 'Timeline', icon: Feather, count: obs.length },
+            { value: 'access', label: 'Who can see', icon: ShieldCheck },
           ]}
         />
       }
@@ -616,6 +784,10 @@ export default function StudentDetail() {
             />
           )}
         </div>
+      )}
+
+      {tab === 'access' && (
+        <AccessPanel student={student} onToast={setToast} onChanged={refresh} />
       )}
 
       <SelfAssessmentModal

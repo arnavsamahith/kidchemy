@@ -20,6 +20,12 @@ const TONE = {
   'roster.import': 'info',
   'student.archive': 'warn',
   'observation.delete': 'alert',
+  'student.erase': 'alert',
+  'guardian.revoke': 'warn',
+  'access_code.rotate': 'warn',
+  'consent.given': 'moss',
+  'consent.withdrawn': 'warn',
+  'retention.run': 'info',
 }
 
 export default function AdminAudit() {
@@ -85,10 +91,12 @@ export default function AdminAudit() {
       }
     >
       <Callout tone="neutral" icon={Activity} className="mb-4">
-        Signups, role changes, roster imports, and every create, edit and delete
-        of an observation. Reads are not logged, because logging every parent
-        opening their own child's page would be more surveillance than the
-        product is willing to do.
+        Signups, role changes, roster imports, consents, every create, edit and
+        delete of an observation, and every time staff open, print or export a
+        child&rsquo;s record (entries starting read.). Who and which role are
+        stamped by the database, and entries cannot be edited or deleted from
+        the app. A parent reading their own child&rsquo;s page is not logged:
+        that would be surveillance of the family, not protection of the child.
       </Callout>
 
       <SearchInput

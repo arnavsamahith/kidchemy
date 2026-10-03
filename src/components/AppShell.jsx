@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   Shield,
+  ShieldCheck,
   TrendingUp,
   Users,
   X,
@@ -45,6 +46,7 @@ const ADMIN_RAIL = [
   { to: '/admin/roster', icon: Users, label: 'Students' },
   { to: '/admin/people', icon: Shield, label: 'Accounts' },
   { to: '/admin/config', icon: Settings, label: 'Configuration' },
+  { to: '/admin/privacy', icon: ShieldCheck, label: 'Privacy' },
   { to: '/admin/audit', icon: BookOpen, label: 'Audit' },
 ]
 

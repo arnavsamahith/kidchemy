@@ -94,3 +94,12 @@ is the thing the product exists to replace, and there is a language guard in
 `src/data/pedagogy.js` that warns teachers who type one.
 
 No em-dashes.
+
+## Public site typography (Oct 2026)
+
+The landing page and /privacy use **Instrument Serif** for headings (one
+weight, so contrast comes from size: hero ~7.6rem against an 18px body) and
+**Satoshi** for reading, line-height 1.7 to 1.8. The signed-in app keeps
+Source Serif 4 + Plus Jakarta Sans. Both public fonts are scoped under the
+`.kl` class in `src/index.css`, with hairline `neutral-200` borders, 128px
+section padding and 200ms hover transitions.

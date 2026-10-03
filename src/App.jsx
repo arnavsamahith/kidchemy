@@ -5,6 +5,7 @@ import RequireRole from './components/RequireRole.jsx'
 
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
+import Privacy from './pages/Privacy.jsx'
 
 import Overview from './pages/teacher/Overview.jsx'
 import Roster from './pages/teacher/Roster.jsx'
@@ -22,6 +23,7 @@ import AdminConsole from './pages/admin/Console.jsx'
 import AdminPeople from './pages/admin/People.jsx'
 import AdminConfig from './pages/admin/Config.jsx'
 import AdminAudit from './pages/admin/Audit.jsx'
+import AdminPrivacy from './pages/admin/Privacy.jsx'
 
 const Teacher = ({ children }) => <RequireRole role="teacher">{children}</RequireRole>
 const Parent = ({ children }) => <RequireRole role="parent">{children}</RequireRole>
@@ -36,6 +38,7 @@ export default function App() {
           {/* Public */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           {/* Teacher (admins are admitted too) */}
           <Route path="/teacher" element={<Teacher><Overview /></Teacher>} />
@@ -63,6 +66,7 @@ export default function App() {
           <Route path="/admin/people" element={<Admin><AdminPeople /></Admin>} />
           <Route path="/admin/config" element={<Admin><AdminConfig /></Admin>} />
           <Route path="/admin/audit" element={<Admin><AdminAudit /></Admin>} />
+          <Route path="/admin/privacy" element={<Admin><AdminPrivacy /></Admin>} />
 
           {/* Parent */}
           <Route path="/parent" element={<Parent><ParentHome /></Parent>} />

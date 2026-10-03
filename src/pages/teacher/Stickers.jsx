@@ -12,6 +12,7 @@ import {
 } from '../../components/ui.jsx'
 import { useStore } from '../../data/store.jsx'
 import { byRoll, classLabel } from '../../data/roster.js'
+import { writeAudit } from '../../data/supabase.js'
 
 // The physical artefact: what actually gets glued to a report card.
 // Prints at roughly 55mm square.
@@ -96,7 +97,10 @@ export default function Stickers() {
       title="One sticker per child"
       subtitle="Print, cut, and stick on the physical report card before the next parent meeting. The QR is the ceremony; the code underneath is what actually links the parent to the child."
       actions={
-        <Button variant="primary" icon={Printer} onClick={() => window.print()}>
+        <Button variant="primary" icon={Printer} onClick={() => {
+          writeAudit('print.stickers', 'class', null, {})
+          window.print()
+        }}>
           Print {shown.length} sticker{shown.length === 1 ? '' : 's'}
         </Button>
       }

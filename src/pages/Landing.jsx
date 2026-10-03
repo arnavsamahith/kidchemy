@@ -1,27 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
   ArrowUpRight,
-  Building2,
   Check,
-  ClipboardList,
-  Eye,
-  EyeOff,
-  Feather,
-  Heart,
-  Layers,
+  Lock,
   MessageCircle,
   Printer,
-  QrCode,
-  Scale,
-  ShieldCheck,
-  Sprout,
+  RotateCcw,
   Timer,
-  Users,
-  Zap,
+  Unlock,
 } from 'lucide-react'
-import { Button, cx } from '../components/ui.jsx'
+import { cx } from '../components/ui.jsx'
 import { Mark } from '../components/AppShell.jsx'
 import { FRAMEWORKS } from '../data/pedagogy.js'
 
@@ -47,265 +37,8 @@ const PILOT_MAILTO = `mailto:${FOUNDER.email}?subject=${encodeURIComponent(
   'Hi Arnav,\n\nSchool name:\nCity:\nBoard (CBSE / ICSE / State / IB):\nClasses we would like to start with:\nBest number to reach me:\n\nThanks,'
 )}`
 
-/* ─── Sample child for the hero tree and the profile excerpt ───────
-   Fictional. Every line is the kind of thing a teacher actually taps. */
-
-const DIMENSIONS = [
-  {
-    id: 'empathy',
-    label: 'Empathy',
-    x: 98,
-    y: 330,
-    lp: 'above',
-    fork: 430,
-    band: 2,
-    note: 'Noticed Kabir eating alone and pulled him into the lunch game.',
-    who: 'Ms. Rao, 14 Aug',
-  },
-  {
-    id: 'creativity',
-    label: 'Creativity',
-    x: 128,
-    y: 196,
-    fork: 395,
-    band: 1,
-    note: 'Turned leftover chart paper into a board game for her table.',
-    who: 'Mr. Iyer, 22 Aug',
-  },
-  {
-    id: 'curiosity',
-    label: 'Curiosity',
-    x: 206,
-    y: 112,
-    fork: 385,
-    band: 3,
-    note: 'Asked why the moon follows the car, then drew three ways to test it.',
-    who: 'Ms. Rao, 2 Sep',
-  },
-  {
-    id: 'communication',
-    label: 'Communication',
-    x: 300,
-    y: 72,
-    lp: 'above',
-    fork: 385,
-    band: 2,
-    note: 'Explained her fraction method to the class using a roti.',
-    who: 'Ms. Rao, 9 Sep',
-  },
-  {
-    id: 'logic',
-    label: 'Logic',
-    x: 394,
-    y: 112,
-    fork: 385,
-    band: 2,
-    note: 'Sorted the class library by a rule she invented, and explained the rule.',
-    who: 'Ms. D’Souza, 18 Aug',
-  },
-  {
-    id: 'persistence',
-    label: 'Persistence',
-    x: 462,
-    y: 196,
-    fork: 395,
-    band: 1,
-    note: 'Rebuilt the paper bridge four times until it held a textbook.',
-    who: 'Mr. Iyer, 5 Sep',
-  },
-  {
-    id: 'collaboration',
-    label: 'Collaboration',
-    x: 502,
-    y: 330,
-    lp: 'above',
-    fork: 430,
-    band: 0,
-    note: 'Not observed yet this term. The profile says so, rather than guessing.',
-    who: 'No observations yet',
-  },
-]
-
-const BANDS = [
-  'not yet observed',
-  'starting to show',
-  'often seen',
-  'a signature strength',
-]
-const BAND_R = [5, 7.5, 10, 13]
-
-/* ─── Audiences ──────────────────────────────────────────────── */
-
-const AUDIENCES = [
-  {
-    id: 'schools',
-    tab: 'School leaders',
-    icon: Building2,
-    headline: 'The Holistic Progress Card, without an extra hour of writing.',
-    pain: 'NEP 2020 and the PARAKH templates ask for a five-domain, multi-voice progress card for every child. Most schools have no tool for it, and their teachers are already stretched.',
-    gives: [
-      {
-        title: 'HPC-ready from day one',
-        body: 'Observations map to the PARAKH domains and the Stream, Mountain, Sky levels. The term card assembles itself.',
-      },
-      {
-        title: 'Parent meetings that land',
-        body: 'Every teacher walks in with a one-page sheet per child: what to praise, what to raise, what to ask.',
-      },
-      {
-        title: 'A school parents choose',
-        body: 'Show prospective families a real portrait of a child. The school down the road shows a mark sheet.',
-      },
-      {
-        title: 'Your data stays yours',
-        body: 'Children’s data stays with the school. No ads, no third-party tracking, designed around the DPDP Act.',
-      },
-    ],
-  },
-  {
-    id: 'teachers',
-    tab: 'Teachers',
-    icon: Feather,
-    headline: 'Two minutes a week. For the whole class.',
-    pain: 'You notice extraordinary things about forty children every day. Then the parent meeting arrives, and all you have is marks and memory.',
-    gives: [
-      {
-        title: 'Taps, not essays',
-        body: 'One prompt at a time. Who asked a question that made the class think? Tap the names. Done.',
-      },
-      {
-        title: 'Your PTM, prepared',
-        body: 'Print a sheet per child the evening before. Three things to praise, one to raise, two questions to ask.',
-      },
-      {
-        title: 'See who you haven’t seen',
-        body: 'A gentle nudge about the quiet child you have not noted in four weeks. Every child gets looked at.',
-      },
-      {
-        title: 'Concerns stay with you',
-        body: 'Anything you mark school-only never reaches a parent. You decide what is shared.',
-      },
-    ],
-  },
-  {
-    id: 'parents',
-    tab: 'Parents',
-    icon: Heart,
-    headline: 'The first time someone describes your child instead of scoring them.',
-    pain: 'A percentage tells you where your child stands. It says nothing about who they are, what lights them up, or what to do at home this month.',
-    gives: [
-      {
-        title: 'A portrait, not a scorecard',
-        body: 'Who your child is, what they do well and how they are growing, in plain language you can read in two minutes.',
-      },
-      {
-        title: 'Scan the report card',
-        body: 'A QR code on the card you already receive. Works on any phone, on a slow connection. No app to install.',
-      },
-      {
-        title: 'What to try this month',
-        body: 'Three specific things to do at home, and questions that start a real conversation at dinner.',
-      },
-      {
-        title: 'Growth you can see',
-        body: 'Term by term, a tree that branches as new strengths show up. Not a ladder to fall behind on.',
-      },
-    ],
-  },
-  {
-    id: 'children',
-    tab: 'Children',
-    icon: Sprout,
-    headline: 'To be seen, not sorted.',
-    pain: 'A child who scores 58% starts to believe they are 58%. Their curiosity, kindness and grit never make it onto the page.',
-    gives: [
-      {
-        title: 'Strengths as things they do',
-        body: '“Rebuilt the bridge until it held”, never “weak student”. Language that always leaves room to grow.',
-      },
-      {
-        title: 'No ranks, no comparisons',
-        body: 'Nothing in Kidchemy places one child against another. Not on any screen, not on any printout.',
-      },
-      {
-        title: 'Their own voice',
-        body: 'Self-reflection prompts, as the HPC intends, so children get to say what they are proud of.',
-      },
-      {
-        title: 'No labels too early',
-        body: 'No career predictions before Class 9. At eleven, a suggested career sticks harder than any mark.',
-      },
-    ],
-  },
-]
-
-const STEPS = [
-  {
-    icon: Zap,
-    title: 'The teacher sweeps the class',
-    body: 'Not “tell me about Aarav”. One prompt at a time, tap every child it was true of. Forty children in about ninety seconds.',
-  },
-  {
-    icon: Feather,
-    title: 'The moments get a story',
-    body: 'For the child who did something worth a sentence: what I saw, what I think it means, what to offer next.',
-  },
-  {
-    icon: Layers,
-    title: 'The picture builds itself',
-    body: 'Strengths, dispositions, the conditions in which they do their best work, and the next step just past what they manage alone.',
-  },
-  {
-    icon: QrCode,
-    title: 'The parent scans the report card',
-    body: 'A QR sticker on the card they already receive. No app, no new system, nothing for the school to replace.',
-  },
-]
-
-const PROOFS = [
-  {
-    icon: ShieldCheck,
-    title: 'Nothing is invented',
-    body: 'Every sentence traces to a counted observation. When anyone asks why it says something, there is an answer, with dates.',
-  },
-  {
-    icon: Scale,
-    title: 'It measures its own bias',
-    body: 'Records built on visible behaviour under-describe quiet children. Kidchemy shows teachers whose attention is landing where.',
-  },
-  {
-    icon: EyeOff,
-    title: 'Teachers can withhold',
-    body: 'Every note is shared or school-only. Concerns default to staff only, so teachers keep recording them honestly.',
-  },
-  {
-    icon: Eye,
-    title: 'Thin means thin',
-    body: 'If a child has only been seen a little, the profile says so plainly. No padding, no horoscope.',
-  },
-]
-
-const MARQUEE = [
-  'Asks the second question',
-  'Helps a friend catch up',
-  'Rebuilds it until it holds',
-  'Notices who is left out',
-  'Explains it with a roti',
-  'Waits, then tries again',
-  'Draws three ways to test it',
-  'Leads without being asked',
-]
-
-const HPC_DOMAINS_SHORT = [
-  'Physical',
-  'Socio-emotional',
-  'Cognitive',
-  'Language',
-  'Aesthetic & cultural',
-]
-
 /* ══════════════════════════════════════════════════════════════════
-   Motion helpers
+   Shared bits
    ══════════════════════════════════════════════════════════════════ */
 
 function useReveal() {
@@ -330,270 +63,336 @@ function useReveal() {
   }, [])
 }
 
-function useScrollProgress(ref) {
+function useInView(ref, margin = '0px') {
+  const [inView, setInView] = useState(false)
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    let raf = 0
-    const update = () => {
-      raf = 0
-      const r = el.getBoundingClientRect()
-      const vh = window.innerHeight || 800
-      const p = Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.75)))
-      el.style.setProperty('--p', p.toFixed(3))
+    if (!el || !('IntersectionObserver' in window)) {
+      setInView(true)
+      return
     }
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update)
-    }
-    update()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll)
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-      if (raf) cancelAnimationFrame(raf)
-    }
-  }, [ref])
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), {
+      rootMargin: margin,
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [ref, margin])
+  return inView
 }
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 function Reveal({ as: Tag = 'div', delay = 0, className, children, ...rest }) {
   return (
-    <Tag
-      className={cx('kc-reveal', className)}
-      style={{ '--d': `${delay}ms` }}
-      {...rest}
-    >
+    <Tag className={cx('kc-reveal', className)} style={{ '--d': `${delay}ms` }} {...rest}>
       {children}
     </Tag>
   )
 }
 
-function Eyebrow({ n, children, light = false }) {
+function Label({ children, light = false, className }) {
   return (
     <p
       className={cx(
-        'mb-4 flex items-center gap-3 text-2xs font-bold uppercase tracking-[0.16em]',
-        light ? 'text-white/70' : 'text-ink-faint'
+        'kl-label',
+        light ? 'text-white/60' : 'text-ink-faint',
+        className
       )}
     >
-      {n && (
-        <span className={cx('kc-tnum', light ? 'text-white' : 'text-accent')}>
-          {n}
-        </span>
-      )}
-      <span
-        className={cx('h-px w-8', light ? 'bg-white/40' : 'bg-ink-faint/40')}
-      />
       {children}
     </p>
   )
 }
 
+function PilotButton({ size = 'md', light = false, className }) {
+  return (
+    <a
+      href={PILOT_MAILTO}
+      className={cx(
+        'kl-btn',
+        light ? 'kl-btn-light' : 'kl-btn-dark',
+        size === 'lg' ? 'px-6 py-3.5 text-base' : 'px-4 py-2 text-sm',
+        className
+      )}
+    >
+      Pilot with us
+      <ArrowRight size={size === 'lg' ? 18 : 15} className="kl-btn-arrow" />
+    </a>
+  )
+}
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+const clamp01 = (x) => Math.min(1, Math.max(0, x))
+const span = (a, b, p) => ease(clamp01((p - a) / (b - a)))
+const lerp = (a, b, t) => a + (b - a) * t
+
 /* ══════════════════════════════════════════════════════════════════
-   The growth tree. A number dissolves, and a child grows in its place.
+   HERO. A child's tree that grows only when a teacher taps.
    Branches are not a ladder: nothing is above or below anything else.
    ══════════════════════════════════════════════════════════════════ */
 
+const TREE = [
+  { id: 'empathy', label: 'Empathy', x: 98, y: 330, lp: 'above', fork: 430, band: 1 },
+  { id: 'creativity', label: 'Creativity', x: 128, y: 196, fork: 395, band: 1 },
+  { id: 'curiosity', label: 'Curiosity', x: 206, y: 112, fork: 385, band: 2 },
+  { id: 'communication', label: 'Communication', x: 300, y: 72, lp: 'above', fork: 385, band: 1 },
+  { id: 'logic', label: 'Logic', x: 394, y: 112, fork: 385, band: 2 },
+  { id: 'persistence', label: 'Persistence', x: 462, y: 196, fork: 395, band: 1 },
+  { id: 'collaboration', label: 'Collaboration', x: 502, y: 330, lp: 'above', fork: 430, band: 0 },
+]
+const BAND_R = [5, 7.5, 10, 13]
+const BANDS = ['not yet seen', 'starting to show', 'often seen', 'a signature strength']
+
+const HERO_PROMPTS = [
+  { dim: 'persistence', q: 'Who kept going after it went wrong?' },
+  { dim: 'collaboration', q: 'Who helped their group finish?' },
+  { dim: 'curiosity', q: 'Who asked a question that made the class think?' },
+  { dim: 'empathy', q: 'Who noticed someone was left out?' },
+]
+const HERO_NAMES = ['Meera', 'Kabir', 'Zoya', 'Dev', 'Ishita', 'Arjun']
+
 const LEAF = 'M0 0 C6 -13 17 -21 30 -23 C29 -8 20 1 7 2 Z'
 
-function branchPath(d) {
+function branchCtrl(d) {
   const sx = 300
   const sy = d.fork
   const dx = d.x - sx
-  return `M${sx} ${sy} C ${sx + dx * 0.08} ${sy - 70}, ${d.x - dx * 0.35} ${
-    d.y + 70
-  }, ${d.x} ${d.y + (d.band ? BAND_R[d.band] : 5)}`
+  return [
+    [sx, sy],
+    [sx + dx * 0.08, sy - 70],
+    [d.x - dx * 0.35, d.y + 70],
+    [d.x, d.y + 5],
+  ]
 }
+function branchPath(d) {
+  const [p0, p1, p2, p3] = branchCtrl(d)
+  return `M${p0[0]} ${p0[1]} C ${p1[0]} ${p1[1]}, ${p2[0]} ${p2[1]}, ${p3[0]} ${p3[1]}`
+}
+function bez(d, t) {
+  const [p0, p1, p2, p3] = branchCtrl(d)
+  const u = 1 - t
+  const f = (i) =>
+    u * u * u * p0[i] + 3 * u * u * t * p1[i] + 3 * u * t * t * p2[i] + t * t * t * p3[i]
+  return [f(0), f(1)]
+}
+const LEAF_T = [0.42, 0.6, 0.76]
 
-function GrowthTree() {
-  const [active, setActive] = useState(2)
-  const [paused, setPaused] = useState(false)
+function HeroTree() {
+  const wrap = useRef(null)
+  const inView = useInView(wrap)
+  const [bands, setBands] = useState(() => Object.fromEntries(TREE.map((d) => [d.id, d.band])))
+  const [step, setStep] = useState(0)
+  const [tapped, setTapped] = useState([])
+  const [pulse, setPulse] = useState(null)
+  const [auto, setAuto] = useState(true)
+  const [hover, setHover] = useState(null)
+  const prompt = HERO_PROMPTS[step % HERO_PROMPTS.length]
 
+  const lock = useRef(false)
+  const tap = useCallback(
+    (name, byUser = true) => {
+      if (byUser) setAuto(false)
+      setTapped((t) => (t.includes(name) ? t : [...t, name]))
+      if (name !== 'Meera' || lock.current) return
+      lock.current = true
+      setBands((b) => ({ ...b, [prompt.dim]: Math.min(3, b[prompt.dim] + 1) }))
+      setPulse({ id: prompt.dim, k: Date.now() })
+      setTimeout(() => {
+        setStep((s) => s + 1)
+        setTapped([])
+        lock.current = false
+      }, 900)
+    },
+    [prompt.dim]
+  )
+
+  const reset = () => {
+    setBands(Object.fromEntries(TREE.map((d) => [d.id, d.band])))
+    setStep(0)
+    setTapped([])
+  }
+
+  // Plays itself until someone touches it.
   useEffect(() => {
-    if (paused) return
-    const t = setInterval(
-      () => setActive((a) => (a + 1) % DIMENSIONS.length),
-      3400
-    )
-    return () => clearInterval(t)
-  }, [paused])
+    if (!auto || !inView || prefersReducedMotion()) return
+    if (step >= HERO_PROMPTS.length) {
+      const t = setTimeout(reset, 2600)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => tap('Meera', false), step === 0 ? 3800 : 2600)
+    return () => clearTimeout(t)
+  }, [auto, inView, step, tap])
 
-  const d = DIMENSIONS[active]
+  const done = step >= HERO_PROMPTS.length
+  const active = hover || pulse?.id
 
   return (
-    <div className="relative">
+    <div ref={wrap} className="relative">
+      <div className="flex items-baseline justify-between gap-3 pr-2 lg:pl-10">
+        <p className="kl-label text-ink-faint">Meera · Class 3B · Term 1</p>
+        <p className="hidden text-xs text-ink-faint sm:block">
+          {active ? `${TREE.find((d) => d.id === active)?.label}: ${BANDS[bands[active]]}` : 'Every branch is something a teacher saw'}
+        </p>
+      </div>
       <svg
         viewBox="0 0 600 560"
         className="h-auto w-full"
         role="img"
-        aria-label="A score of 58 percent fades, and a branching tree of a child's strengths grows in its place."
+        aria-label="Meera's growth tree. Each branch is a strength. It grows when a teacher records seeing it."
       >
-        {/* The number */}
-        <text
-          x="300"
-          y="330"
-          textAnchor="middle"
-          className="kc-dissolve font-display"
-          style={{ fontSize: 200, fontWeight: 600, fill: 'var(--color-ink)' }}
-        >
-          58%
-        </text>
-
-        {/* Ground */}
         <path
           d="M150 548 C 230 541, 370 541, 450 548"
           pathLength="1"
           className="kc-draw"
-          style={{ '--d': '1300ms' }}
+          style={{ '--d': '200ms' }}
           stroke="var(--color-line)"
           strokeWidth="2"
           fill="none"
           strokeLinecap="round"
         />
-
-        {/* Trunk */}
         <path
           d="M300 546 C 297 500, 304 450, 300 380"
           pathLength="1"
           className="kc-draw"
-          style={{ '--d': '1500ms' }}
+          style={{ '--d': '400ms' }}
           stroke="var(--color-ink)"
           strokeWidth="5"
           fill="none"
           strokeLinecap="round"
         />
-
-        {/* Branches */}
-        {DIMENSIONS.map((dim, i) => (
+        {TREE.map((d, i) => (
           <path
-            key={dim.id}
-            d={branchPath(dim)}
+            key={d.id}
+            d={branchPath(d)}
             pathLength="1"
             className="kc-draw"
-            style={{ '--d': `${2100 + i * 120}ms` }}
-            stroke={dim.band ? 'var(--color-ink)' : 'var(--color-ink-faint)'}
-            strokeOpacity={dim.band ? 0.85 : 0.5}
-            strokeWidth={dim.band ? 2.6 : 1.8}
+            style={{ '--d': `${900 + i * 110}ms`, transition: 'stroke 400ms ease, stroke-width 400ms ease' }}
+            stroke={bands[d.id] ? 'var(--color-ink)' : 'var(--color-ink-faint)'}
+            strokeOpacity={bands[d.id] ? 0.85 : 0.45}
+            strokeWidth={1.6 + bands[d.id] * 0.55}
+            strokeDasharray={bands[d.id] ? undefined : '0.02 0.02'}
             fill="none"
             strokeLinecap="round"
           />
         ))}
-
-        {/* Leaves along the branches */}
-        {DIMENSIONS.filter((dim) => dim.band > 0).map((dim, i) => {
-          const mx = 300 + (dim.x - 300) * 0.55
-          const my = dim.fork + (dim.y - dim.fork) * 0.55
-          const flip = dim.x < 300 ? -1 : 1
-          return (
-            <g
-              key={`leaf-${dim.id}`}
-              transform={`translate(${mx} ${my}) scale(${0.55 * flip} 0.55)`}
-            >
-              <path
-                d={LEAF}
-                className="kc-bloom"
-                style={{ '--d': `${2900 + i * 110}ms` }}
-                fill={i % 2 ? 'var(--color-moss)' : 'var(--color-accent)'}
-              />
-            </g>
-          )
-        })}
-
-        {/* Nodes */}
-        {DIMENSIONS.map((dim, i) => {
-          const r = BAND_R[dim.band]
-          const isActive = i === active
-          const left = !dim.lp && dim.x < 300
-          const right = !dim.lp && dim.x > 300
-          const tx = left ? dim.x - r - 10 : right ? dim.x + r + 10 : dim.x
-          const ty = left || right ? dim.y + 6 : dim.y - r - 12
-          const anchor = left ? 'end' : right ? 'start' : 'middle'
-          return (
-            <g
-              key={`node-${dim.id}`}
-              className="kc-bloom cursor-pointer"
-              style={{ '--d': `${3000 + i * 130}ms` }}
-              onMouseEnter={() => {
-                setActive(i)
-                setPaused(true)
-              }}
-              onMouseLeave={() => setPaused(false)}
-              onClick={() => {
-                setActive(i)
-                setPaused(true)
-              }}
-              tabIndex={0}
-              onFocus={() => {
-                setActive(i)
-                setPaused(true)
-              }}
-              role="button"
-              aria-label={`${dim.label}: ${BANDS[dim.band]}`}
-            >
-              {isActive && (
-                <circle
-                  cx={dim.x}
-                  cy={dim.y}
-                  r={r + 9}
-                  fill="var(--color-accent-tint)"
+        {/* Leaves: one per band, so growth is something you can count */}
+        {TREE.flatMap((d) =>
+          LEAF_T.slice(0, bands[d.id]).map((t, j) => {
+            const [lx, ly] = bez(d, t)
+            const flip = (j % 2 ? -1 : 1) * (d.x < 300 ? -1 : 1)
+            const fresh = pulse?.id === d.id && j === bands[d.id] - 1
+            return (
+              <g key={`${d.id}-${j}-${fresh ? pulse.k : 0}`} transform={`translate(${lx} ${ly}) scale(${0.5 * flip} 0.5)`}>
+                <path
+                  d={LEAF}
+                  className="kc-bloom"
+                  style={{ '--d': fresh ? '0ms' : `${1900 + j * 120}ms` }}
+                  fill={j % 2 ? 'var(--color-moss)' : 'var(--color-accent)'}
                 />
+              </g>
+            )
+          })
+        )}
+        {TREE.map((d, i) => {
+          const b = bands[d.id]
+          const r = BAND_R[b]
+          const left = !d.lp && d.x < 300
+          const right = !d.lp && d.x > 300
+          const tx = left ? d.x - r - 10 : right ? d.x + r + 10 : d.x
+          const ty = left || right ? d.y + 6 : d.y - r - 12
+          const isOn = active === d.id
+          return (
+            <g
+              key={d.id}
+              className="kc-bloom cursor-default"
+              style={{ '--d': `${1700 + i * 110}ms` }}
+              onMouseEnter={() => setHover(d.id)}
+              onMouseLeave={() => setHover(null)}
+            >
+              {pulse?.id === d.id && (
+                <circle key={pulse.k} cx={d.x} cy={d.y} r={r + 4} className="kl-ring" fill="none" stroke="var(--color-accent)" strokeWidth="2" />
               )}
               <circle
-                cx={dim.x}
-                cy={dim.y}
+                cx={d.x}
+                cy={d.y}
                 r={r}
+                style={{ transition: 'r 500ms cubic-bezier(.34,1.56,.64,1), fill 400ms ease' }}
                 fill={
-                  dim.band === 0
+                  b === 0
                     ? 'var(--color-paper)'
-                    : dim.band === 3
+                    : b === 3
                       ? 'var(--color-accent)'
-                      : dim.band === 2
+                      : b === 2
                         ? 'var(--color-ramp-4)'
                         : 'var(--color-ramp-2)'
                 }
-                stroke={dim.band === 0 ? 'var(--color-ink-faint)' : 'none'}
-                strokeDasharray={dim.band === 0 ? '2 2' : undefined}
+                stroke={b === 0 ? 'var(--color-ink-faint)' : 'none'}
+                strokeDasharray={b === 0 ? '2 2' : undefined}
                 strokeWidth="1.5"
               />
               <text
                 x={tx}
                 y={ty}
-                textAnchor={anchor}
+                textAnchor={left ? 'end' : right ? 'start' : 'middle'}
                 style={{
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: 19,
-                  fontWeight: isActive ? 700 : 600,
-                  fill: isActive ? 'var(--color-accent-ink)' : 'var(--color-ink-soft)',
+                  fontFamily: 'var(--font-satoshi)',
+                  fontSize: 18,
+                  fontWeight: isOn ? 700 : 500,
+                  fill: isOn ? 'var(--color-accent-ink)' : 'var(--color-ink-soft)',
+                  transition: 'fill 200ms ease',
                 }}
               >
-                {dim.label}
+                {d.label}
               </text>
             </g>
           )
         })}
       </svg>
 
-      {/* Evidence card: the line a teacher actually logged */}
-      <div
-        className="kc-bloom relative -mt-3 sm:mx-8"
-        style={{ '--d': '3900ms' }}
-      >
-        <div
-          key={d.id}
-          className="kc-fade rounded-[14px] border border-line bg-card/95 p-4 shadow-[var(--shadow-raised)] backdrop-blur"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-bold text-ink">{d.label}</p>
-            <span className="rounded-full bg-accent-tint px-2 py-0.5 text-2xs font-semibold text-accent-ink">
-              {BANDS[d.band]}
-            </span>
+      {/* The UI that makes it grow. Overlaps the tree on purpose. */}
+      <div className="kc-rise relative z-10 mt-2 lg:absolute lg:-left-24 lg:bottom-4 lg:mt-0 lg:w-[330px]" style={{ animationDelay: '1200ms' }}>
+        <div className="kl-panel p-4 lg:-rotate-[1.5deg]">
+          <div className="flex items-center justify-between">
+            <p className="kl-label text-ink-faint">Class sweep</p>
+            <p className="kc-tnum text-2xs text-ink-faint">
+              {done ? 'done' : `prompt ${step + 1} of ${HERO_PROMPTS.length}`}
+            </p>
           </div>
-          <p className="mt-1.5 font-display text-[1.05rem] leading-snug text-ink-soft">
-            {d.band ? `“${d.note}”` : d.note}
-          </p>
-          <p className="mt-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-ink-faint">
-            {d.who}
-          </p>
+          {done ? (
+            <div className="mt-2">
+              <p className="font-editorial text-[1.45rem] leading-tight text-ink">
+                Four taps. Meera&rsquo;s tree just grew.
+              </p>
+              <button type="button" onClick={reset} className="kl-link mt-3 inline-flex items-center gap-1.5 text-sm">
+                <RotateCcw size={13} /> Run it again
+              </button>
+            </div>
+          ) : (
+            <>
+              <p key={step} className="kc-fade mt-1.5 font-editorial text-[1.45rem] leading-[1.15] text-ink">
+                {prompt.q}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {HERO_NAMES.map((n) => {
+                  const on = tapped.includes(n)
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => tap(n)}
+                      className={cx('kl-chip', on && 'is-on', n === 'Meera' && !on && auto && 'kl-chip-hint')}
+                    >
+                      {on && <Check size={12} strokeWidth={3} />}
+                      {n}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-3 text-xs text-ink-faint">Tap Meera, and watch her tree.</p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -601,8 +400,267 @@ function GrowthTree() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   One small picture per audience
+   STORY. One year of moments becomes one number. Then we undo it.
+   Scroll-driven: every moment is a DOM node moved by transform.
    ══════════════════════════════════════════════════════════════════ */
+
+const GROUPS = ['Curiosity', 'Empathy', 'Persistence', 'Creativity', 'Communication', 'Leadership']
+const MOMENTS = [
+  ['asked why the moon follows the car', 0], ['comforted Kabir after the race', 1], ['rebuilt the bridge four times', 2],
+  ['turned chart paper into a board game', 3], ['explained fractions with a roti', 4], ['organised the clean-up', 5],
+  ['drew three ways to test it', 0], ['pulled the new girl into the game', 1], ['finished the long run', 2],
+  ['wrote a poem about the monsoon', 3], ['read aloud to Class 1', 4], ['ran the class library', 5],
+  ['asked the second question', 0], ['shared her crayons without asking', 1], ['tried the hard puzzle again', 2],
+  ['invented a rule for sorting books', 3], ['retold the story in her words', 4], ['spoke up for a friend', 5],
+  ['wondered where the rain goes', 0], ['noticed Dev eating alone', 1], ['practised the knot until it held', 2],
+  ['made a puppet from a sock', 3], ['argued kindly, and listened', 4], ['set up the science table', 5],
+  ['took the clock apart', 0], ['apologised first', 1], ['kept going when it failed', 2],
+  ['painted the sky green, on purpose', 3], ['asked the visitor a real question', 4], ['showed Zoya the shortcut', 5],
+  ['tested which ball bounces highest', 0], ['waited for the slow walker', 1], ['fixed her own mistake', 2],
+  ['composed a clapping rhythm', 3], ['explained the rules to the group', 4], ['led the morning prayer', 5],
+  ['counted the ants on the wall', 0], ['helped tie Arjun’s shoe', 1], ['learnt the times table, slowly', 2],
+  ['designed a better pencil box', 3], ['wrote a letter to the principal', 4], ['calmed the class down', 5],
+]
+const DATES = ['12 Jun', '19 Jun', '3 Jul', '11 Jul', '24 Jul', '2 Aug', '9 Aug', '14 Aug', '22 Aug', '2 Sep', '9 Sep', '18 Sep']
+
+function seeded(i) {
+  const x = Math.sin(i * 9301 + 49297) * 233280
+  return x - Math.floor(x)
+}
+
+function OneNumberStory() {
+  const section = useRef(null)
+  const field = useRef(null)
+  const chipRefs = useRef([])
+  const numRef = useRef(null)
+  const headRefs = useRef([])
+  const capRefs = useRef([])
+  const [mobile, setMobile] = useState(false)
+  const reduced = useMemo(prefersReducedMotion, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const on = () => setMobile(mq.matches)
+    on()
+    mq.addEventListener?.('change', on)
+    return () => mq.removeEventListener?.('change', on)
+  }, [])
+
+  const perGroup = mobile ? 4 : 7
+  const chips = useMemo(() => {
+    const out = []
+    GROUPS.forEach((_, g) => {
+      MOMENTS.filter((m) => m[1] === g)
+        .slice(0, perGroup)
+        .forEach((m, k) => out.push({ text: m[0], g, k, date: DATES[(g * 3 + k) % DATES.length] }))
+    })
+    return out
+  }, [perGroup])
+
+  useEffect(() => {
+    const sec = section.current
+    const fld = field.current
+    if (!sec || !fld) return
+    let raf = 0
+    let geo = null
+
+    const measure = () => {
+      const w = fld.clientWidth
+      const h = fld.clientHeight
+      const cols = mobile ? 2 : 3
+      const rows = mobile ? 3 : 2
+      const cw = w / cols
+      const rh = h / rows
+      fld.style.setProperty('--cw', `${cw}px`)
+      geo = {
+        w,
+        h,
+        cw,
+        pos: chips.map((c, i) => {
+          const col = c.g % cols
+          const row = Math.floor(c.g / cols)
+          return {
+            sx: seeded(i + 1) * (w - (mobile ? 150 : 210)),
+            sy: seeded(i + 101) * (h - 34),
+            ox: col * cw + 6,
+            oy: row * rh + 30 + c.k * (mobile ? 25 : 27),
+          }
+        }),
+        heads: GROUPS.map((_, g) => ({
+          x: (g % cols) * cw + 6,
+          y: Math.floor(g / cols) * rh,
+        })),
+      }
+      headRefs.current.forEach((el, g) => {
+        if (el) el.style.transform = `translate(${geo.heads[g].x}px, ${geo.heads[g].y}px)`
+      })
+    }
+
+    const paint = () => {
+      raf = 0
+      if (!geo) measure()
+      const r = sec.getBoundingClientRect()
+      const total = sec.offsetHeight - window.innerHeight
+      const vh = window.innerHeight || 800
+      const p = reduced ? 1 : clamp01(-r.top / Math.max(total, 1))
+      // Moments start arriving as the section scrolls in, before it pins.
+      const appear = reduced ? 1 : clamp01((vh * 0.9 - r.top) / (vh * 1.1))
+      const collapse = span(0.26, 0.44, p)
+      const order = span(0.68, 0.88, p)
+      const cx = geo.w / 2 - 40
+      const cy = geo.h / 2 - 12
+      const n = chips.length
+      chips.forEach((c, i) => {
+        const el = chipRefs.current[i]
+        if (!el) return
+        const g = geo.pos[i]
+        const shown = clamp01(appear * (n + 6) - i)
+        let x = lerp(g.sx, cx, collapse)
+        let y = lerp(g.sy, cy, collapse)
+        x = lerp(x, g.ox, order)
+        y = lerp(y, g.oy, order)
+        const s = lerp(lerp(1, 0.15, collapse), 1, order)
+        const o = shown * lerp(lerp(1, 0, collapse), 1, order)
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(3)})`
+        el.style.opacity = o.toFixed(3)
+        el.classList.toggle('is-ordered', order > 0.6)
+      })
+      if (numRef.current) {
+        const show = span(0.36, 0.46, p) * (1 - span(0.6, 0.7, p))
+        const gone = span(0.6, 0.7, p)
+        numRef.current.style.opacity = show.toFixed(3)
+        numRef.current.style.filter = `blur(${(gone * 14).toFixed(1)}px)`
+        numRef.current.style.transform = `translate(-50%, -50%) scale(${(0.86 + 0.14 * span(0.36, 0.46, p) + gone * 0.25).toFixed(3)})`
+      }
+      headRefs.current.forEach((el) => {
+        if (el) el.style.opacity = order.toFixed(3)
+      })
+      const idx = p < 0.25 ? 0 : p < 0.5 ? 1 : p < 0.67 ? 2 : 3
+      capRefs.current.forEach((el, i) => el?.classList.toggle('is-on', i === idx))
+    }
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(paint)
+    }
+    const onResize = () => {
+      geo = null
+      onScroll()
+    }
+    measure()
+    paint()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [chips, mobile, reduced])
+
+  const captions = [
+    ['Every day, a teacher sees moments like these.', 'Forty children. Six hours. Hundreds of small things worth knowing.'],
+    ['At the end of term, all of them become this.', 'One number, on one sheet of paper.'],
+    ['Everything else disappears.', 'The child keeps the number. At home, in class, and in their own head.'],
+    ['Kidchemy keeps every moment.', 'And sorts them into who the child is, with a date and a name on each one.'],
+  ]
+
+  return (
+    <section ref={section} id="story" className={cx('relative', reduced ? '' : 'h-[340vh]')} aria-label="How a year becomes a number">
+      <div className={cx(reduced ? '' : 'sticky top-0 h-dvh', 'overflow-hidden')}>
+        <div className="mx-auto grid h-full max-w-[88rem] grid-rows-[auto_1fr] gap-6 px-5 py-20 md:grid-cols-[0.8fr_1.4fr] md:grid-rows-1 md:items-center md:gap-10 md:px-10">
+          <div className="relative min-h-[9.5rem] md:min-h-[16rem]">
+            {captions.map(([h, s], i) => (
+              <div key={h} ref={(el) => (capRefs.current[i] = el)} className={cx('kl-cap', (i === 0 || reduced) && 'is-on', reduced && 'kl-cap-static')}>
+                <p className="font-editorial text-[2.3rem] leading-[1.02] tracking-[-0.015em] text-ink sm:text-5xl lg:text-[4.1rem]">
+                  {i === 3 ? (
+                    <>
+                      Kidchemy keeps <em className="text-accent">every</em> moment.
+                    </>
+                  ) : (
+                    h
+                  )}
+                </p>
+                <p className="mt-4 max-w-sm text-base leading-relaxed text-ink-soft sm:text-lg">{s}</p>
+              </div>
+            ))}
+          </div>
+          <div ref={field} className="relative h-full min-h-[22rem] md:h-[34rem]">
+            {GROUPS.map((g, i) => (
+              <p key={g} ref={(el) => (headRefs.current[i] = el)} className="kl-label absolute left-0 top-0 text-accent" style={{ opacity: reduced ? 1 : 0 }}>
+                {g}
+              </p>
+            ))}
+            {chips.map((c, i) => (
+              <span key={`${c.g}-${c.k}`} ref={(el) => (chipRefs.current[i] = el)} className="kl-moment" style={{ opacity: 0 }}>
+                <span className="kl-moment-date">{c.date}</span>
+                {c.text}
+              </span>
+            ))}
+            <div ref={numRef} className="pointer-events-none absolute left-1/2 top-1/2 select-none" style={{ opacity: 0, transform: 'translate(-50%,-50%)' }}>
+              <p className="font-editorial text-[9rem] leading-none text-ink sm:text-[13rem] lg:text-[17rem]">58%</p>
+              <p className="-mt-2 text-center text-sm text-ink-faint">Term 1 · Overall</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AUDIENCES. One set of taps, four people served.
+   ══════════════════════════════════════════════════════════════════ */
+
+const AUDIENCES = [
+  {
+    id: 'schools',
+    tab: 'School leaders',
+    headline: 'The progress card, without the extra hour of writing.',
+    pain: 'NEP 2020 asks for a five-domain, multi-voice Holistic Progress Card for every child. Most schools have no tool for it, and their teachers are already stretched.',
+    gives: [
+      ['HPC-ready from day one', 'Every tap maps to the PARAKH domains and levels. The term card assembles itself.'],
+      ['Parent meetings that land', 'A one-page sheet per child: what to praise, what to raise, what to ask.'],
+      ['A school parents choose', 'Show prospective families a real portrait of a child. The school down the road shows a mark sheet.'],
+      ['Your data stays yours', 'You decide. We carry it out. No ads, no trackers, built around the DPDP Act.'],
+    ],
+  },
+  {
+    id: 'teachers',
+    tab: 'Teachers',
+    headline: 'Two minutes a week. For the whole class.',
+    pain: 'You notice extraordinary things about forty children every day. Then the parent meeting arrives, and all you have is marks and memory.',
+    gives: [
+      ['Taps, not essays', 'One prompt at a time. Tap the names it was true of. Done.'],
+      ['Your PTM, prepared', 'Print a sheet per child the evening before.'],
+      ['See who you haven’t seen', 'A nudge about the quiet child you have not noted in four weeks.'],
+      ['Concerns stay with you', 'Mark a note school-only and no parent ever sees it.'],
+    ],
+  },
+  {
+    id: 'parents',
+    tab: 'Parents',
+    headline: 'The first time someone describes your child instead of scoring them.',
+    pain: 'A percentage tells you where your child stands. It says nothing about who they are, or what to do at home this month.',
+    gives: [
+      ['A portrait, not a scorecard', 'Who your child is and how they are growing, in two minutes on any phone.'],
+      ['Scan the report card', 'A code on the card you already get. No app to install.'],
+      ['What to try this month', 'Three specific things to do at home, and a question for dinner.'],
+      ['Yours to control', 'Download it, correct it, or erase it. Withdraw in one tap.'],
+    ],
+  },
+  {
+    id: 'children',
+    tab: 'Children',
+    headline: 'To be seen, not sorted.',
+    pain: 'A child who scores 58% starts to believe they are 58%. Their curiosity, kindness and grit never make it onto the page.',
+    gives: [
+      ['Strengths as things they do', '“Rebuilt the bridge until it held.” Never “weak student”.'],
+      ['No ranks, anywhere', 'Nothing places one child against another. Not on any screen or printout.'],
+      ['Their own voice', 'Self-reflection, as the HPC intends. What they are proud of, in their words.'],
+      ['No labels too early', 'No career predictions before Class 9.'],
+    ],
+  },
+]
 
 function SchoolVisual() {
   const rows = [
@@ -612,35 +670,25 @@ function SchoolVisual() {
     ['Language', 1],
     ['Aesthetic & cultural', 0],
   ]
-  const levels = ['Stream', 'Mountain', 'Sky']
   return (
-    <div className="rounded-[18px] border border-line bg-card p-5 shadow-[var(--shadow-raised)]">
+    <div className="kl-panel p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="kc-eyebrow">Holistic Progress Card · Term 1</p>
-          <p className="mt-1 font-display text-xl font-semibold text-ink">
-            Meera S. · Class 3B
-          </p>
+          <p className="kl-label text-ink-faint">Holistic Progress Card · Term 1</p>
+          <p className="mt-1 font-editorial text-2xl text-ink">Meera S. · Class 3B</p>
         </div>
         <Mark size={30} />
       </div>
-      <div className="mt-4 divide-y divide-line-soft">
-        {rows.map(([label, lvl]) => (
-          <div
-            key={label}
-            className="flex items-center justify-between gap-3 py-2.5"
-          >
-            <span className="text-sm font-semibold text-ink-soft">{label}</span>
+      <div className="mt-4 divide-y divide-neutral-200/70">
+        {rows.map(([label, lvl], i) => (
+          <div key={label} className="flex items-center justify-between gap-3 py-2.5">
+            <span className="text-sm text-ink-soft">{label}</span>
             <span className="flex gap-1">
-              {levels.map((l, i) => (
+              {['Stream', 'Mountain', 'Sky'].map((l, k) => (
                 <span
                   key={l}
-                  className={cx(
-                    'rounded-full px-2 py-0.5 text-2xs font-semibold',
-                    i === lvl
-                      ? 'bg-accent text-white'
-                      : 'bg-paper-2 text-ink-faint'
-                  )}
+                  className={cx('kl-level', k === lvl && 'is-on')}
+                  style={{ transitionDelay: `${i * 90 + k * 40}ms` }}
                 >
                   {l}
                 </span>
@@ -649,140 +697,82 @@ function SchoolVisual() {
           </div>
         ))}
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-paper px-3.5 py-3">
-        <p className="text-xs text-ink-soft">
-          <span className="font-bold text-ink">46 observations</span> by 3
-          teachers, plus self and parent voice
-        </p>
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-accent">
-          <Printer size={13} /> Print card
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200/70 pt-3 text-xs text-ink-soft">
+        <span>
+          <b className="font-semibold text-ink">46 observations</b> · 3 teachers · self and parent voice
         </span>
-      </div>
-      <div className="mt-3">
-        <div className="flex justify-between text-2xs font-semibold text-ink-faint">
-          <span>Class 3B observed this month</span>
-          <span className="kc-tnum">38 / 40</span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper-2">
-          <div className="h-full w-[95%] rounded-full bg-moss" />
-        </div>
+        <span className="inline-flex items-center gap-1 font-semibold text-accent">
+          <Printer size={13} /> Print
+        </span>
       </div>
     </div>
   )
 }
 
-const SWEEP_NAMES = [
-  'Aarav',
-  'Meera',
-  'Kabir',
-  'Ananya',
-  'Rohan',
-  'Ishita',
-  'Vihaan',
-  'Sara',
-  'Dev',
-  'Nila',
-  'Arjun',
-  'Zoya',
-]
-const SWEEP_PICKS = [1, 4, 6, 10]
-
 function TeacherVisual() {
+  const names = ['Aarav', 'Meera', 'Kabir', 'Ananya', 'Rohan', 'Ishita', 'Vihaan', 'Sara', 'Dev', 'Nila', 'Arjun', 'Zoya']
+  const picks = [1, 4, 6, 10]
   const [picked, setPicked] = useState(0)
   useEffect(() => {
-    const t = setInterval(
-      () => setPicked((p) => (p >= SWEEP_PICKS.length + 2 ? 0 : p + 1)),
-      900
-    )
+    const t = setInterval(() => setPicked((p) => (p >= picks.length + 2 ? 0 : p + 1)), 900)
     return () => clearInterval(t)
   }, [])
-  const on = new Set(SWEEP_PICKS.slice(0, picked))
+  const on = new Set(picks.slice(0, picked))
   return (
-    <div className="rounded-[18px] border border-line bg-card p-5 shadow-[var(--shadow-raised)]">
+    <div className="kl-panel p-6">
       <div className="flex items-center justify-between">
-        <p className="kc-eyebrow">Class sweep · prompt 3 of 7</p>
-        <span className="inline-flex items-center gap-1 text-2xs font-semibold text-ink-faint">
+        <p className="kl-label text-ink-faint">Class sweep · prompt 3 of 7</p>
+        <span className="inline-flex items-center gap-1 text-2xs text-ink-faint">
           <Timer size={12} /> 0:41
         </span>
       </div>
-      <p className="mt-2 font-display text-xl font-semibold leading-snug text-ink">
-        Who asked a question that made the class think?
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {SWEEP_NAMES.map((n, i) => (
-          <span
-            key={n}
-            className={cx(
-              'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition-all duration-300',
-              on.has(i)
-                ? 'border-accent bg-accent text-white'
-                : 'border-line bg-paper text-ink-soft'
-            )}
-          >
-            {on.has(i) && <Check size={13} strokeWidth={3} />}
+      <p className="mt-2 font-editorial text-2xl leading-snug text-ink">Who asked a question that made the class think?</p>
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {names.map((n, i) => (
+          <span key={n} className={cx('kl-chip', on.has(i) && 'is-on')}>
+            {on.has(i) && <Check size={12} strokeWidth={3} />}
             {n}
           </span>
         ))}
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-line-soft pt-3">
-        <p className="text-xs text-ink-faint">
-          <span className="font-bold text-ink">{on.size}</span> tapped · Kabir
-          not seen in 4 weeks
-        </p>
-        <span className="text-xs font-bold text-accent">Next prompt →</span>
-      </div>
+      <p className="mt-4 border-t border-neutral-200/70 pt-3 text-xs text-ink-faint">
+        <b className="font-semibold text-ink">{on.size}</b> tapped · Kabir not seen in 4 weeks
+      </p>
     </div>
   )
 }
 
 function ParentVisual() {
   return (
-    <div className="mx-auto w-full max-w-[300px] rounded-[38px] border-[10px] border-ink bg-ink shadow-[var(--shadow-pop)]">
-      <div className="overflow-hidden rounded-[28px] bg-paper">
-        <div className="bg-accent px-5 pb-5 pt-6 text-white">
-          <p className="text-2xs font-bold uppercase tracking-[0.14em] text-white/70">
-            Term 1 · Class 3B
-          </p>
-          <p className="mt-1 font-display text-2xl font-semibold leading-tight">
-            Here&rsquo;s who Meera is this term.
-          </p>
+    <div className="mx-auto w-full max-w-[290px] rounded-[40px] border-[9px] border-ink bg-ink shadow-[var(--shadow-pop)]">
+      <div className="overflow-hidden rounded-[31px] bg-paper">
+        <div className="bg-accent px-5 pb-5 pt-7 text-white">
+          <p className="kl-label text-white/65">Term 1 · Class 3B</p>
+          <p className="mt-1 font-editorial text-[1.7rem] leading-[1.05]">Here&rsquo;s who Meera is this term.</p>
         </div>
         <div className="space-y-3 p-4">
-          <div className="rounded-xl bg-card p-3 shadow-[var(--shadow-card)]">
-            <p className="kc-eyebrow">Who Meera is</p>
-            <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-              Meera tests ideas out loud. When something puzzles her, she asks
-              the second question, and then she draws it.
-            </p>
-          </div>
-          <div className="rounded-xl bg-card p-3 shadow-[var(--shadow-card)]">
-            <p className="kc-eyebrow">What she does well</p>
+          <p className="text-xs leading-relaxed text-ink-soft">
+            Meera tests ideas out loud. When something puzzles her, she asks the second question, and then she draws it.
+          </p>
+          <div className="border-t border-neutral-200/70 pt-3">
             {[
               ['Curiosity', 4],
               ['Empathy', 3],
               ['Persistence', 2],
             ].map(([l, n]) => (
               <div key={l} className="mt-1.5 flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink-soft">{l}</span>
+                <span className="text-xs text-ink-soft">{l}</span>
                 <span className="flex gap-1">
                   {[1, 2, 3, 4].map((k) => (
-                    <span
-                      key={k}
-                      className={cx(
-                        'h-2 w-2 rounded-full',
-                        k <= n ? 'bg-accent' : 'bg-paper-3'
-                      )}
-                    />
+                    <span key={k} className={cx('h-2 w-2 rounded-full', k <= n ? 'bg-accent' : 'bg-paper-3')} />
                   ))}
                 </span>
               </div>
             ))}
           </div>
           <div className="rounded-xl bg-moss-tint p-3">
-            <p className="kc-eyebrow text-moss!">Try this month</p>
-            <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-              Ask her to explain her homework to you instead of checking it.
-            </p>
+            <p className="kl-label text-moss">Try this month</p>
+            <p className="mt-1 text-xs leading-relaxed text-ink-soft">Ask her to explain her homework to you, instead of checking it.</p>
           </div>
         </div>
       </div>
@@ -792,25 +782,12 @@ function ParentVisual() {
 
 function ChildVisual() {
   return (
-    <div className="relative">
-      <div className="rounded-[18px] border border-dashed border-line bg-paper-2/60 p-5">
-        <p className="kc-eyebrow">What the report card says</p>
-        <p className="mt-2 font-display text-4xl font-semibold text-ink-faint line-through decoration-2">
-          Rank 27 of 40
-        </p>
-      </div>
-      <div className="-mt-4 ml-6 space-y-2 rounded-[18px] border border-line bg-card p-5 shadow-[var(--shadow-raised)]">
-        <p className="kc-eyebrow">What Kidchemy says</p>
-        {[
-          'Asks why, until it makes sense.',
-          'Rebuilds it until it holds.',
-          'Notices who has been left out.',
-        ].map((t) => (
-          <p
-            key={t}
-            className="flex items-start gap-2 font-display text-lg leading-snug text-ink"
-          >
-            <Sprout size={16} className="mt-1 shrink-0 text-moss" />
+    <div className="relative pt-4">
+      <p className="font-editorial text-6xl text-ink-faint/70 line-through decoration-1 sm:text-7xl">Rank 27 of 40</p>
+      <div className="kl-panel -mt-3 ml-8 space-y-2 p-6">
+        <p className="kl-label text-ink-faint">What Kidchemy says</p>
+        {['Asks why, until it makes sense.', 'Rebuilds it until it holds.', 'Notices who has been left out.'].map((t, i) => (
+          <p key={t} className="kc-rise font-editorial text-2xl leading-snug text-ink" style={{ animationDelay: `${200 + i * 160}ms` }}>
             {t}
           </p>
         ))}
@@ -819,746 +796,958 @@ function ChildVisual() {
   )
 }
 
-const VISUALS = {
-  schools: SchoolVisual,
-  teachers: TeacherVisual,
-  parents: ParentVisual,
-  children: ChildVisual,
+const VISUALS = { schools: SchoolVisual, teachers: TeacherVisual, parents: ParentVisual, children: ChildVisual }
+
+function Audiences({ tab, setTab }) {
+  const aud = AUDIENCES.find((a) => a.id === tab)
+  const Visual = VISUALS[tab]
+  return (
+    <section id="for-everyone" className="scroll-mt-16 border-y border-neutral-200/70 bg-card">
+      <div className="mx-auto grid max-w-[88rem] gap-12 px-5 py-32 md:px-10 lg:grid-cols-[0.75fr_1.6fr] lg:gap-20">
+        <div className="min-w-0 lg:sticky lg:top-28 lg:self-start">
+          <Reveal>
+            <Label>One set of taps</Label>
+            <h2 className="mt-4 font-editorial text-5xl leading-[0.98] tracking-[-0.015em] text-ink sm:text-6xl">
+              Four people <em>served.</em>
+            </h2>
+          </Reveal>
+          <div role="tablist" aria-label="Who it is for" className="mt-10 flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-0 lg:overflow-visible">
+            {AUDIENCES.map((a, i) => (
+              <button
+                key={a.id}
+                role="tab"
+                type="button"
+                aria-selected={tab === a.id}
+                onClick={() => setTab(a.id)}
+                className={cx('kl-tab', tab === a.id && 'is-on')}
+              >
+                <span className="kc-tnum text-xs text-ink-faint">0{i + 1}</span>
+                <span>{a.tab}</span>
+                <ArrowRight size={16} className="kl-tab-arrow ml-auto hidden lg:block" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div key={aud.id} role="tabpanel" className="kc-tab-panel grid min-w-0 items-start gap-12 xl:grid-cols-[1.15fr_1fr]">
+          <div>
+            <h3 className="font-editorial text-[2.4rem] leading-[1.04] tracking-[-0.01em] text-ink sm:text-[3.2rem]">{aud.headline}</h3>
+            <p className="mt-6 max-w-xl text-lg leading-[1.75] text-ink-soft">{aud.pain}</p>
+            <ol className="mt-10 border-t border-neutral-200/70">
+              {aud.gives.map(([t, b], i) => (
+                <li key={t} className="grid grid-cols-[2.5rem_1fr] gap-x-3 border-b border-neutral-200/70 py-4">
+                  <span className="kc-tnum pt-0.5 text-xs text-ink-faint">0{i + 1}</span>
+                  <div>
+                    <p className="font-semibold text-ink">{t}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-soft">{b}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="xl:-mr-6 xl:mt-24">
+            <Visual />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TRY IT. The visitor runs a real sweep, and sees what it builds.
+   ══════════════════════════════════════════════════════════════════ */
+
+const CLASS = ['Aarav', 'Meera', 'Kabir', 'Ananya', 'Rohan', 'Ishita', 'Vihaan', 'Sara', 'Dev', 'Nila', 'Arjun', 'Zoya']
+const TRY_PROMPTS = [
+  { q: 'Who asked a question that made the class think?', dim: 'Curiosity', domain: 'Cognitive', line: (n) => `${n} asks the question that makes the class think.` },
+  { q: 'Who noticed someone was left out, and did something?', dim: 'Empathy', domain: 'Socio-emotional', line: (n) => `${n} notices who has been left out, and does something about it.` },
+  { q: 'Who kept going after it went wrong?', dim: 'Persistence', domain: 'Socio-emotional', line: (n) => `${n} keeps going after it goes wrong.` },
+]
+const fmt = (ms) => {
+  const s = Math.max(0, Math.round(ms / 1000))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+function TrySweep() {
+  const [step, setStep] = useState(0)
+  const [taps, setTaps] = useState(() => TRY_PROMPTS.map(() => []))
+  const [start, setStart] = useState(null)
+  const [end, setEnd] = useState(null)
+  const [now, setNow] = useState(0)
+  const [pick, setPick] = useState(null)
+  const done = step >= TRY_PROMPTS.length
+
+  useEffect(() => {
+    if (!start || end) return
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [start, end])
+
+  const toggle = (n) => {
+    if (done) return
+    if (!start) {
+      setStart(Date.now())
+      setNow(Date.now())
+    }
+    setTaps((all) =>
+      all.map((list, i) => (i === step ? (list.includes(n) ? list.filter((x) => x !== n) : [...list, n]) : list))
+    )
+  }
+  const next = () => {
+    if (!start) setStart(Date.now())
+    if (step === TRY_PROMPTS.length - 1) {
+      setEnd(Date.now())
+      const counts = CLASS.map((n) => [n, taps.flat().filter((x) => x === n).length])
+      counts.sort((a, b) => b[1] - a[1])
+      setPick(counts[0][1] ? counts[0][0] : 'Meera')
+    }
+    setStep((s) => s + 1)
+  }
+  const reset = () => {
+    setStep(0)
+    setTaps(TRY_PROMPTS.map(() => []))
+    setStart(null)
+    setEnd(null)
+    setPick(null)
+  }
+
+  const seen = new Set(taps.flat())
+  const unseen = CLASS.filter((n) => !seen.has(n))
+  const elapsed = start ? (end || now) - start : 0
+  const total = taps.flat().length
+  const childLines = pick ? TRY_PROMPTS.filter((p, i) => taps[i].includes(pick)) : []
+
+  return (
+    <section id="try" className="scroll-mt-16 mx-auto max-w-[88rem] px-5 py-32 md:px-10">
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
+        <Reveal>
+          <Label>Try it</Label>
+          <h2 className="mt-4 font-editorial text-5xl leading-[0.98] tracking-[-0.015em] text-ink sm:text-[4.5rem]">
+            Be the teacher <br className="hidden sm:block" />
+            for thirty <em>seconds.</em>
+          </h2>
+        </Reveal>
+        <Reveal delay={100}>
+          <p className="max-w-md text-lg leading-[1.75] text-ink-soft lg:ml-auto">
+            Three prompts. Tap every child each one was true of. Then see what a parent reads, built from your taps alone.
+          </p>
+        </Reveal>
+      </div>
+
+      <div className="mt-16 grid gap-6 lg:grid-cols-[1.25fr_1fr] lg:gap-0">
+        {/* The teacher's screen */}
+        <div className="kl-panel relative z-10 p-6 sm:p-8 lg:mr-[-3rem] lg:mt-10 lg:self-start">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1.5">
+              {TRY_PROMPTS.map((_, i) => (
+                <span key={i} className={cx('h-1 w-10 rounded-full transition-colors duration-300', i < step ? 'bg-accent' : i === step ? 'bg-ink' : 'bg-neutral-200')} />
+              ))}
+            </div>
+            <span className="kc-tnum inline-flex items-center gap-1.5 text-sm text-ink-faint">
+              <Timer size={14} /> {fmt(elapsed)}
+            </span>
+          </div>
+
+          {done ? (
+            <div className="kc-fade py-6">
+              <p className="font-editorial text-[2.2rem] leading-[1.05] text-ink sm:text-5xl">
+                That took you {fmt(elapsed)}.
+              </p>
+              <p className="mt-4 max-w-md text-base leading-relaxed text-ink-soft">
+                You recorded <b className="font-semibold text-ink">{total} observations</b>, each dated and mapped to the Holistic Progress Card. A real class of forty takes about ninety seconds.
+              </p>
+              {unseen.length > 0 && (
+                <p className="mt-4 max-w-md text-sm leading-relaxed text-ink-soft">
+                  You didn&rsquo;t tap {unseen.slice(0, 3).join(', ')}
+                  {unseen.length > 3 ? ` and ${unseen.length - 3} others` : ''}. It is easy to miss the same quiet children week after week. Kidchemy tells you who, gently, before it becomes a pattern.
+                </p>
+              )}
+              <button type="button" onClick={reset} className="kl-link mt-6 inline-flex items-center gap-1.5 text-sm">
+                <RotateCcw size={14} /> Start again
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="kl-label mt-6 text-ink-faint">Class 3B · prompt {step + 1} of {TRY_PROMPTS.length}</p>
+              <p key={step} className="kc-fade mt-2 font-editorial text-[2rem] leading-[1.08] text-ink sm:text-[2.6rem]">
+                {TRY_PROMPTS[step].q}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {CLASS.map((n) => {
+                  const on = taps[step].includes(n)
+                  return (
+                    <button key={n} type="button" onClick={() => toggle(n)} className={cx('kl-chip kl-chip-lg', on && 'is-on')} aria-pressed={on}>
+                      {on && <Check size={14} strokeWidth={3} />}
+                      {n}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-8 flex items-center justify-between gap-4 border-t border-neutral-200/70 pt-5">
+                <p className="text-sm text-ink-faint">
+                  {taps[step].length ? `${taps[step].length} tapped. Nobody else is marked down.` : 'Tap as many or as few as it was true of.'}
+                </p>
+                <button type="button" onClick={next} className="kl-btn kl-btn-dark px-5 py-2.5 text-sm">
+                  {step === TRY_PROMPTS.length - 1 ? 'Finish' : 'Next prompt'}
+                  <ArrowRight size={15} className="kl-btn-arrow" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* What it builds */}
+        <div className="rounded-[28px] bg-ink p-6 text-white sm:p-10 lg:pl-20">
+          {!done ? (
+            <>
+              <p className="kl-label text-white/50">Your class, as you see it</p>
+              <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {CLASS.map((n) => {
+                  const c = taps.flat().filter((x) => x === n).length
+                  return (
+                    <div key={n} className={cx('kl-seat', c > 0 && 'is-seen')}>
+                      <span className="kl-seat-dot" style={{ '--n': Math.min(c, 3) }} />
+                      <span className="text-xs">{n}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-8 grid grid-cols-2 gap-6 border-t border-white/10 pt-6">
+                <div>
+                  <p className="font-editorial text-5xl">{seen.size}<span className="text-white/40">/12</span></p>
+                  <p className="mt-1 text-xs text-white/55">children seen this sweep</p>
+                </div>
+                <div>
+                  <p className="font-editorial text-5xl">{total}</p>
+                  <p className="mt-1 text-xs text-white/55">observations, mapped to the HPC</p>
+                </div>
+              </div>
+              <p className="mt-6 text-sm leading-relaxed text-white/60">
+                {start ? (unseen.length ? `Not seen yet: ${unseen.slice(0, 4).join(', ')}${unseen.length > 4 ? '…' : ''}` : 'Every child seen. That almost never happens by accident.') : 'Nothing yet. Start tapping.'}
+              </p>
+            </>
+          ) : (
+            <div className="kc-fade">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="kl-label mr-2 text-white/50">What the parent reads</span>
+                {CLASS.filter((n) => seen.has(n)).slice(0, 6).map((n) => (
+                  <button key={n} type="button" onClick={() => setPick(n)} className={cx('rounded-full border px-2.5 py-1 text-xs transition-colors duration-200', pick === n ? 'border-white bg-white text-ink' : 'border-white/20 text-white/70 hover:border-white/50')}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-6 rounded-[22px] bg-paper p-6 text-ink">
+                <p className="kl-label text-ink-faint">Term 1 · Class 3B</p>
+                <p className="mt-1 font-editorial text-[2rem] leading-[1.05]">Here&rsquo;s who {pick} is this term.</p>
+                {childLines.length ? (
+                  <ul className="mt-4 space-y-2">
+                    {childLines.map((p) => (
+                      <li key={p.dim} className="kc-rise border-t border-neutral-200/70 pt-2">
+                        <p className="font-editorial text-xl leading-snug">{p.line(pick)}</p>
+                        <p className="mt-0.5 text-2xs uppercase tracking-[0.12em] text-ink-faint">{p.dim} · {p.domain} · today, by you</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm leading-relaxed text-ink-soft">
+                    Not enough seen yet. The page says so plainly, rather than guessing.
+                  </p>
+                )}
+              </div>
+              <p className="mt-5 text-sm leading-relaxed text-white/60">
+                Every sentence traces back to a tap. Nothing is invented, and nothing is shared that the teacher kept school-only.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HPC + PROOF. Click the wheel; see the evidence under every claim.
+   ══════════════════════════════════════════════════════════════════ */
+
+const LEVELS = ['Stream', 'Mountain', 'Sky']
+const HPC = [
+  {
+    id: 'physical',
+    label: 'Physical',
+    items: [
+      { label: 'Movement', level: 1, ev: [['Mr. Iyer', '4 Jul', 'Ran the relay without dropping the baton, then showed Dev the hand-off.']] },
+      { label: 'Self-care', level: 1, ev: [['Ms. Rao', '18 Jul', 'Packed up her own station without a reminder, all week.']] },
+    ],
+  },
+  {
+    id: 'socio',
+    label: 'Socio-emotional',
+    lines: ['Socio-', 'emotional'],
+    items: [
+      { label: 'Empathy', level: 2, ev: [['Ms. Rao', '14 Aug', 'Noticed Kabir eating alone and pulled him into the lunch game.'], ['Mr. Iyer', '2 Sep', 'Waited at the gate for the slowest walker.']] },
+      { label: 'Persistence', level: 1, ev: [['Mr. Iyer', '5 Sep', 'Rebuilt the paper bridge four times until it held a textbook.']] },
+    ],
+  },
+  {
+    id: 'cognitive',
+    label: 'Cognitive',
+    items: [
+      { label: 'Curiosity', level: 2, ev: [['Ms. Rao', '2 Sep', 'Asked why the moon follows the car, then drew three ways to test it.'], ['Ms. D’Souza', '11 Sep', 'Took the class clock apart, with permission, to see what ticks.']] },
+      { label: 'Logic', level: 2, ev: [['Ms. D’Souza', '18 Aug', 'Sorted the class library by a rule she invented, and explained the rule.']] },
+    ],
+  },
+  {
+    id: 'language',
+    label: 'Language',
+    items: [
+      { label: 'Speaking', level: 2, ev: [['Ms. Rao', '9 Sep', 'Explained her fraction method to the class using a roti.']] },
+      { label: 'Writing', level: 0, ev: [['Ms. Rao', '16 Sep', 'Knows the idea, struggles to put it in three lines. The gap is expression, not understanding.']] },
+    ],
+  },
+  {
+    id: 'aesthetic',
+    label: 'Aesthetic & cultural',
+    lines: ['Aesthetic &', 'cultural'],
+    items: [
+      { label: 'Creativity', level: 1, ev: [['Mr. Iyer', '22 Aug', 'Turned leftover chart paper into a board game for her table.']] },
+      { label: 'Expression', level: 0, ev: [] },
+    ],
+  },
+]
+
+const R = 230
+function polar(a, r) {
+  const t = ((a - 90) * Math.PI) / 180
+  return [R + r * Math.cos(t), R + r * Math.sin(t)]
+}
+function arc(a0, a1, r0, r1) {
+  const g = 0.9
+  const [x0, y0] = polar(a0 + g, r1)
+  const [x1, y1] = polar(a1 - g, r1)
+  const [x2, y2] = polar(a1 - g, r0)
+  const [x3, y3] = polar(a0 + g, r0)
+  const large = a1 - a0 > 180 ? 1 : 0
+  return `M${x0} ${y0} A${r1} ${r1} 0 ${large} 1 ${x1} ${y1} L${x2} ${y2} A${r0} ${r0} 0 ${large} 0 ${x3} ${y3} Z`
+}
+
+function HpcWheel() {
+  const [sel, setSel] = useState({ d: 2, i: 0 })
+  const dom = HPC[sel.d]
+  const item = dom.items[sel.i]
+  const seg = 360 / HPC.length
+  return (
+    <div className="grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-16">
+      <div className="relative mx-auto w-full max-w-[620px]">
+        <svg viewBox="-60 0 580 460" className="h-auto w-full overflow-visible" role="group" aria-label="The five Holistic Progress Card domains. Choose a competency to see the evidence.">
+          {HPC.map((d, di) => {
+            const a0 = di * seg
+            const a1 = a0 + seg
+            const [lx, ly] = polar(a0 + seg / 2, 92)
+            return (
+              <g key={d.id}>
+                <path d={arc(a0, a1, 58, 128)} className={cx('kl-arc-in', sel.d === di && 'is-on')} onClick={() => setSel({ d: di, i: 0 })} />
+                <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" className="kl-arc-text" style={{ fontSize: 12 }}>
+                  {(d.lines || [d.label]).map((w, k, arr) => (
+                    <tspan key={w} x={lx} dy={k === 0 ? (arr.length > 1 ? -7 : 0) : 14}>
+                      {w}
+                    </tspan>
+                  ))}
+                </text>
+                {d.items.map((it, ii) => {
+                  const b0 = a0 + (seg / 2) * ii
+                  const b1 = b0 + seg / 2
+                  const on = sel.d === di && sel.i === ii
+                  const [tx, ty] = polar(b0 + seg / 4, 214)
+                  const r1 = 150 + it.level * 22
+                  return (
+                    <g key={it.label} className="cursor-pointer" onClick={() => setSel({ d: di, i: ii })} role="button" tabIndex={0} aria-label={`${d.label}: ${it.label}`} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSel({ d: di, i: ii })}>
+                      <path d={arc(b0, b1, 134, 200)} className="kl-arc-track" />
+                      <path d={arc(b0, b1, 134, r1)} className={cx('kl-arc-out', on && 'is-on')} style={{ '--lvl': it.level }} />
+                      <text x={tx} y={ty} textAnchor={tx < R - 10 ? 'end' : tx > R + 10 ? 'start' : 'middle'} dominantBaseline="middle" className={cx('kl-arc-label', on && 'is-on')}>
+                        {it.label}
+                      </text>
+                    </g>
+                  )
+                })}
+              </g>
+            )
+          })}
+          <circle cx={R} cy={R} r="52" fill="none" stroke="rgba(255,255,255,.18)" />
+          <text x={R} y={R - 6} textAnchor="middle" className="kl-arc-center">Meera</text>
+          <text x={R} y={R + 12} textAnchor="middle" className="kl-arc-center-sub">Term 1</text>
+        </svg>
+        <div className="mt-2 flex justify-center gap-5 text-2xs uppercase tracking-[0.14em] text-white/55">
+          {LEVELS.map((l, i) => (
+            <span key={l} className="flex items-center gap-1.5">
+              <span className="inline-block h-2 rounded-full bg-white" style={{ width: 8 + i * 8, opacity: 0.4 + i * 0.3 }} />
+              {l}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div key={`${sel.d}-${sel.i}`} className="kc-fade">
+        <p className="kl-label text-white/55">{dom.label}</p>
+        <p className="mt-2 font-editorial text-5xl leading-none sm:text-6xl">{item.label}</p>
+        <div className="mt-5 flex items-center gap-2">
+          {LEVELS.map((l, i) => (
+            <span key={l} className={cx('rounded-full border px-3 py-1 text-xs transition-colors duration-200', i === item.level && item.ev.length ? 'border-white bg-white text-accent-ink' : 'border-white/20 text-white/50')}>
+              {l}
+            </span>
+          ))}
+        </div>
+        <div className="mt-8 border-t border-white/15">
+          {item.ev.length ? (
+            item.ev.map(([who, when, what]) => (
+              <figure key={what} className="border-b border-white/15 py-4">
+                <blockquote className="font-editorial text-[1.45rem] leading-snug">&ldquo;{what}&rdquo;</blockquote>
+                <figcaption className="mt-2 text-2xs uppercase tracking-[0.14em] text-white/55">
+                  {who} · {when}
+                </figcaption>
+              </figure>
+            ))
+          ) : (
+            <p className="border-b border-white/15 py-4 font-editorial text-[1.45rem] leading-snug text-white/70">
+              Not observed yet this term. The card says so, rather than guessing.
+            </p>
+          )}
+        </div>
+        <p className="mt-5 text-sm text-white/60">This is what sits behind every line on the card. Click any part of the wheel.</p>
+      </div>
+    </div>
+  )
+}
+
+const PROOFS = [
+  ['Nothing is invented.', 'Every sentence traces to a counted, dated observation. Ask why it says something and there is an answer.'],
+  ['It measures its own bias.', 'Records built on visible behaviour under-describe quiet children. Kidchemy shows teachers where their attention lands.'],
+  ['Teachers can withhold.', 'Every note is shared or school-only. Concerns default to staff, so they keep being recorded honestly.'],
+  ['Thin means thin.', 'If a child has only been seen a little, the page says so. No padding, no horoscope.'],
+]
+
+function useScrollVar(ref) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const r = el.getBoundingClientRect()
+      const vh = window.innerHeight || 800
+      el.style.setProperty('--p', Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.75))).toFixed(3))
+    }
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', on, { passive: true })
+    window.addEventListener('resize', on)
+    return () => {
+      window.removeEventListener('scroll', on)
+      window.removeEventListener('resize', on)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [ref])
+}
+
+function HpcAndProof() {
+  const ref = useRef(null)
+  useScrollVar(ref)
+  return (
+    <section ref={ref} id="hpc" className="scroll-mt-16">
+      <div className="kc-expand bg-accent text-white">
+        <div className="mx-auto max-w-[88rem] px-5 py-32 md:px-10">
+          <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+            <h2 className="font-editorial text-5xl leading-[0.98] tracking-[-0.015em] sm:text-[4.6rem]">
+              Built for the progress card. <em className="text-white/70">Built to be believed.</em>
+            </h2>
+            <p className="max-w-md text-lg leading-[1.75] text-white/75 lg:ml-auto">
+              NEP 2020&rsquo;s Holistic Progress Card asks for five domains, the child&rsquo;s own voice, and levels instead of marks. Kidchemy maps every tap to it, from KG to Class 8.
+            </p>
+          </div>
+
+          <div className="mt-20">
+            <HpcWheel />
+          </div>
+
+          <div className="mt-28 grid gap-12 border-t border-white/15 pt-14 lg:grid-cols-[0.8fr_1.6fr]">
+            <p className="font-editorial text-4xl leading-[1.05]">
+              Most products like this become a horoscope. Four decisions keep this one honest.
+            </p>
+            <ol className="grid gap-x-12 sm:grid-cols-2">
+              {PROOFS.map(([t, b], i) => (
+                <Reveal as="li" key={t} delay={i * 90} className={cx('border-t border-white/15 py-6', i % 2 === 1 && 'sm:mt-14')}>
+                  <p className="kc-tnum text-xs text-white/45">0{i + 1}</p>
+                  <p className="mt-2 font-editorial text-[1.7rem] leading-tight">{t}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-white/70">{b}</p>
+                </Reveal>
+              ))}
+            </ol>
+          </div>
+
+          <div className="mt-16 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {Object.values(FRAMEWORKS).map((f) => (
+                <span key={f.id} title={f.oneLine} className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/75 transition-colors duration-200 hover:border-white/60 hover:text-white">
+                  {f.label}
+                </span>
+              ))}
+            </div>
+            <p className="max-w-md text-sm leading-relaxed text-white/60">
+              What we refused matters too. Learning styles are not supported by evidence, so no child is ever called a visual learner. And no careers are named below Class 9.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   THE LETTER. Flip on the evidence; every line shows its source.
+   ══════════════════════════════════════════════════════════════════ */
+
+function Evidence({ on, note, children }) {
+  return (
+    <span className={cx('kl-ev', on && 'is-on')}>
+      {children}
+      <span className="kl-ev-note" aria-hidden={!on}>
+        {note}
+      </span>
+    </span>
+  )
+}
+
+function Letter() {
+  const ref = useRef(null)
+  const inView = useInView(ref, '-30% 0px -30% 0px')
+  const [on, setOn] = useState(false)
+  const [touched, setTouched] = useState(false)
+  useEffect(() => {
+    if (inView && !touched) {
+      const t = setTimeout(() => setOn(true), 1400)
+      return () => clearTimeout(t)
+    }
+  }, [inView, touched])
+
+  return (
+    <section id="sample" className="scroll-mt-16 mx-auto max-w-[88rem] px-5 py-32 md:px-10">
+      <div className="grid gap-14 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
+        <div className="lg:pt-16">
+          <Reveal>
+            <Label>What a parent reads</Label>
+            <h2 className="mt-4 font-editorial text-5xl leading-[0.98] tracking-[-0.015em] text-ink sm:text-6xl">
+              Not a dashboard. <em>A letter.</em>
+            </h2>
+            <p className="mt-6 max-w-sm text-lg leading-[1.75] text-ink-soft">
+              Plain language, two minutes on any phone. Turn on the sources and see where each line came from.
+            </p>
+          </Reveal>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            onClick={() => {
+              setTouched(true)
+              setOn((v) => !v)
+            }}
+            className="kl-switch mt-8"
+          >
+            <span className={cx('kl-switch-track', on && 'is-on')}>
+              <span className="kl-switch-thumb" />
+            </span>
+            <span className="text-sm font-medium text-ink">Show the evidence</span>
+          </button>
+        </div>
+
+        <article ref={ref} className="kl-panel relative p-7 sm:p-12 lg:mr-[-2rem]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/70 pb-5">
+            <div>
+              <p className="font-editorial text-3xl text-ink">Meera, Class 3B</p>
+              <p className="mt-1 text-xs text-ink-faint">From 46 observations by 3 teachers, June to September</p>
+            </div>
+            <span className="kl-label rounded-full border border-neutral-200 px-2.5 py-1 text-ink-faint">Sample</span>
+          </div>
+
+          <Label className="mt-8">Who Meera is</Label>
+          <p className="mt-3 font-editorial text-[1.75rem] leading-[1.3] text-ink sm:text-[2.1rem]">
+            <Evidence on={on} note="Curiosity · 9 observations · Ms. Rao, Ms. D’Souza">
+              Meera tests ideas out loud.
+            </Evidence>{' '}
+            <Evidence on={on} note="“Asked why the moon follows the car” · 2 Sep">
+              When something puzzles her she asks the second question,
+            </Evidence>{' '}
+            <Evidence on={on} note="Drew it 6 of 9 times · Mr. Iyer">
+              and then she draws it until it makes sense.
+            </Evidence>
+          </p>
+
+          <div className="mt-10 grid gap-8 sm:grid-cols-2">
+            <div>
+              <Label>At her best when</Label>
+              <p className="mt-2 text-base leading-[1.75] text-ink-soft">
+                <Evidence on={on} note="Concentration 25+ min in 4 hands-on tasks">
+                  She can work with her hands first and explain after.
+                </Evidence>{' '}
+                Long silent writing tasks hide what she knows.
+              </p>
+            </div>
+            <div>
+              <Label>Next step for her</Label>
+              <p className="mt-2 text-base leading-[1.75] text-ink-soft">
+                <Evidence on={on} note="Writing · Stream · Ms. Rao, 16 Sep">
+                  Turning a spoken explanation into three written lines.
+                </Evidence>{' '}
+                The gap is expression, not understanding.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-6 border-t border-neutral-200/70 pt-8 sm:grid-cols-[1fr_1fr]">
+            <div>
+              <Label className="text-moss">Try this at home</Label>
+              <ul className="mt-2 space-y-1.5 text-base text-ink-soft">
+                <li>Ask her to teach you her homework, instead of checking it.</li>
+                <li>Give her something broken to take apart and fix.</li>
+              </ul>
+            </div>
+            <div>
+              <Label>Ask her tonight</Label>
+              <p className="mt-2 font-editorial text-2xl leading-snug text-ink">
+                &ldquo;What&rsquo;s something you figured out by yourself this week?&rdquo;
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SAFETY. Pick a person; see exactly what they can open.
+   ══════════════════════════════════════════════════════════════════ */
+
+const DATA_ITEMS = [
+  'Observations the teacher shared',
+  'Notes the teacher kept school-only',
+  'Which classmate wrote an appreciation',
+  'The Holistic Progress Card',
+  'Who opened the record, and when',
+]
+const VIEWERS = [
+  { id: 'parent', label: 'Meera’s parent', sees: [0, 3], why: 'Only after linking with the sticker code and Meera’s first name, and agreeing to each purpose.' },
+  { id: 'teacher', label: 'Meera’s teacher', sees: [0, 1, 2, 3], why: 'Teachers see children in their own school. They can edit only the notes they wrote.' },
+  { id: 'other', label: 'A teacher at another school', sees: [], why: 'The database refuses. Not hidden by the screen: refused at the row.' },
+  { id: 'admin', label: 'The school’s admin', sees: [0, 1, 2, 3, 4], why: 'Needs two-step sign-in. Every staff view, print and export is in the access log.' },
+  { id: 'stranger', label: 'Another parent', sees: [], why: 'A guessed code is not enough. Five wrong tries and linking pauses for an hour.' },
+  { id: 'ads', label: 'Advertisers, anyone else', sees: [], why: 'No ads, no trackers, no selling. Not now, not later.' },
+]
+
+const PROMISES = [
+  ['Consent comes first.', 'Item by item, nothing pre-ticked, recorded against the notice the parent saw. Withdrawing takes one tap.'],
+  ['The school decides.', 'Under the DPDP Act the school is in charge of its data. Kidchemy only carries out its instructions.'],
+  ['See it, fix it, erase it.', 'Parents download, correct or erase from their home page, and get a reply within 30 days.'],
+  ['Locked at the database.', 'Row-level rules, encryption in transit and at rest, two-step sign-in for admins, auto sign-out on shared laptops.'],
+  ['Guard rails for teachers.', 'Notes that mention health, caste, religion or family life are flagged before they can be shared. Safety concerns go to the school’s safeguarding lead, not into an app.'],
+  ['A plan for bad days.', 'If data is ever exposed, families hear without delay and the Data Protection Board within 72 hours.'],
+]
+
+function Safety() {
+  const [v, setV] = useState('parent')
+  const viewer = VIEWERS.find((x) => x.id === v)
+  return (
+    <section id="safety" className="scroll-mt-16 border-y border-neutral-200/70 bg-card">
+      <div className="mx-auto max-w-[88rem] px-5 py-32 md:px-10">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+          <Reveal>
+            <Label>Safety and privacy</Label>
+            <h2 className="mt-4 font-editorial text-5xl leading-[0.98] tracking-[-0.015em] text-ink sm:text-[4.5rem]">
+              A child&rsquo;s record, <em>locked like it matters.</em>
+            </h2>
+          </Reveal>
+          <Reveal delay={100}>
+            <p className="max-w-md text-lg leading-[1.75] text-ink-soft lg:ml-auto">
+              Pick a person. See exactly what they can open about Meera. These are the rules the database enforces, not settings on a screen.
+            </p>
+          </Reveal>
+        </div>
+
+        <div className="mt-16 grid gap-10 lg:grid-cols-[0.9fr_1.4fr] lg:gap-16">
+          <div className="flex flex-wrap gap-2 lg:flex-col lg:gap-0">
+            {VIEWERS.map((x) => (
+              <button key={x.id} type="button" onClick={() => setV(x.id)} className={cx('kl-tab kl-tab-sm', v === x.id && 'is-on')}>
+                <span>{x.label}</span>
+                <span className="ml-auto hidden font-satoshi text-xs text-ink-faint lg:inline">{x.sees.length ? `${x.sees.length} of 5` : 'nothing'}</span>
+              </button>
+            ))}
+          </div>
+          <div>
+            <ul className="border-t border-neutral-200/70">
+              {DATA_ITEMS.map((d, i) => {
+                const open = viewer.sees.includes(i)
+                return (
+                  <li key={d} className={cx('kl-perm', open && 'is-open')} style={{ transitionDelay: `${i * 45}ms` }}>
+                    <span className="kl-perm-icon">{open ? <Unlock size={15} /> : <Lock size={15} />}</span>
+                    <span className="flex-1">{d}</span>
+                    <span className="text-xs">{open ? 'can see' : 'locked'}</span>
+                  </li>
+                )
+              })}
+            </ul>
+            <p key={v} className="kc-fade mt-6 max-w-xl font-editorial text-2xl leading-snug text-ink">
+              {viewer.why}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-28 grid gap-x-16 gap-y-0 sm:grid-cols-2 lg:grid-cols-3">
+          {PROMISES.map(([t, b], i) => (
+            <Reveal key={t} delay={(i % 3) * 90} className={cx('border-t border-neutral-200/70 py-7', i % 3 === 1 && 'lg:mt-10', i % 3 === 2 && 'lg:mt-20')}>
+              <p className="font-editorial text-[1.7rem] leading-tight text-ink">{t}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{b}</p>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal className="mt-12">
+          <Link to="/privacy" className="kl-link inline-flex items-center gap-1.5 text-base">
+            Read the full privacy notice <ArrowUpRight size={16} />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ABOUT
+   ══════════════════════════════════════════════════════════════════ */
+
+function About() {
+  const [photoOk, setPhotoOk] = useState(Boolean(FOUNDER.photo))
+  return (
+    <section id="about" className="scroll-mt-16 mx-auto max-w-[88rem] px-5 py-32 md:px-10">
+      <div className="grid items-start gap-14 lg:grid-cols-[0.75fr_1.25fr] lg:gap-24">
+        <Reveal className="lg:sticky lg:top-28">
+          <figure>
+            <div className="relative aspect-[4/5] w-full max-w-sm overflow-hidden rounded-[28px] bg-accent">
+              {photoOk ? (
+                <img src={FOUNDER.photo} alt={`${FOUNDER.name}, founder of Kidchemy`} className="h-full w-full object-cover" loading="lazy" onError={() => setPhotoOk(false)} />
+              ) : (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-white">
+                  <Mark size={96} tone="white" />
+                  <span className="kl-label text-white/60">Photo coming soon</span>
+                </div>
+              )}
+            </div>
+            <figcaption className="mt-4 flex max-w-sm items-baseline justify-between gap-3 border-t border-neutral-200/70 pt-3">
+              <span className="font-editorial text-xl text-ink">{FOUNDER.name}</span>
+              <span className="text-xs text-ink-faint">{[FOUNDER.role, FOUNDER.college].filter(Boolean).join(' · ')}</span>
+            </figcaption>
+          </figure>
+        </Reveal>
+
+        <div>
+          <Reveal>
+            <Label>Why I&rsquo;m building this</Label>
+            <h2 className="mt-4 font-editorial text-5xl leading-[1] tracking-[-0.015em] text-ink sm:text-[4rem]">
+              Every child deserves to be <em>described,</em> not just measured.
+            </h2>
+          </Reveal>
+          <Reveal delay={80} className="mt-10 max-w-2xl space-y-6 text-lg leading-[1.8] text-ink-soft">
+            <p>
+              {FOUNDER.college ? `I'm a student at ${FOUNDER.college}. ` : ''}
+              Like most of us, I grew up in a system that folds a whole year of a child&rsquo;s life into one number on one sheet of paper. That number decides how a child is spoken about at school, at the dinner table, and eventually in their own head.
+            </p>
+            <p>
+              But teachers see so much more. The child who asks the question no one else thought of. The one who quietly helps a friend catch up. The one who rebuilds the model five times. None of it has anywhere to go, so it disappears.{' '}
+              <span className="text-ink">Kidchemy gives it somewhere to go.</span>
+            </p>
+          </Reveal>
+
+          <Reveal delay={140}>
+            <blockquote className="mt-14 border-l border-accent pl-6 font-editorial text-[2rem] leading-[1.2] text-ink sm:text-[2.4rem]">
+              A country where every report card comes with a portrait. Where a parent&rsquo;s first question is &ldquo;what lights her up?&rdquo; and not &ldquo;what did she get?&rdquo;
+            </blockquote>
+          </Reveal>
+
+          <ol className="mt-14 max-w-2xl">
+            {[
+              ['Now', 'Two pilot schools this term, working side by side with their teachers.'],
+              ['Next', 'Every Holistic Progress Card written from evidence, not from memory the night before.'],
+              ['Always', 'Free for parents. No ads. Children’s data stays with their school.'],
+            ].map(([k, v], i) => (
+              <Reveal as="li" key={k} delay={180 + i * 80} className="relative grid grid-cols-[5.5rem_1fr] gap-4 border-t border-neutral-200/70 py-4">
+                <span className="kl-label pt-1 text-accent">{k}</span>
+                <span className="text-base leading-relaxed text-ink-soft">{v}</span>
+              </Reveal>
+            ))}
+          </ol>
+
+          <Reveal delay={300} className="mt-12 flex flex-wrap gap-3">
+            <a href={`mailto:${FOUNDER.email}`} className="kl-btn kl-btn-ghost px-5 py-2.5 text-sm">
+              <MessageCircle size={15} /> Write to me
+            </a>
+            {FOUNDER.linkedin && (
+              <a href={FOUNDER.linkedin} target="_blank" rel="noreferrer" className="kl-btn kl-btn-ghost px-5 py-2.5 text-sm">
+                LinkedIn <ArrowUpRight size={15} />
+              </a>
+            )}
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 /* ══════════════════════════════════════════════════════════════════
    Page
    ══════════════════════════════════════════════════════════════════ */
 
+const NAV = [
+  ['Schools', 'schools'],
+  ['Teachers', 'teachers'],
+  ['Parents', 'parents'],
+]
+
 export default function Landing() {
   useReveal()
   const [tab, setTab] = useState('schools')
-  const expandRef = useRef(null)
-  useScrollProgress(expandRef)
-  const [photoOk, setPhotoOk] = useState(Boolean(FOUNDER.photo))
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 12)
+    on()
+    window.addEventListener('scroll', on, { passive: true })
+    return () => window.removeEventListener('scroll', on)
+  }, [])
 
   const goTab = (id) => {
     setTab(id)
-    document
-      .getElementById('for-everyone')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document.getElementById('for-everyone')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const aud = AUDIENCES.find((a) => a.id === tab)
-  const Visual = VISUALS[tab]
-
   return (
-    <div className="min-h-dvh overflow-x-clip bg-paper">
+    <div className="kl min-h-dvh overflow-x-clip bg-paper font-satoshi text-ink">
       {/* ── Nav ─────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
+      <header className={cx('sticky top-0 z-40 transition-[background-color,border-color] duration-200', scrolled ? 'border-b border-neutral-200/70 bg-paper/85 backdrop-blur' : 'border-b border-transparent')}>
+        <div className="mx-auto flex max-w-[88rem] items-center justify-between gap-4 px-5 py-3.5 md:px-10">
           <Link to="/" className="flex items-center gap-2" aria-label="Kidchemy home">
-            <Mark size={30} tone="bare" />
-            <span className="font-display text-xl font-semibold tracking-[-0.015em] text-ink">
-              Kidchemy
-            </span>
+            <Mark size={28} tone="bare" />
+            <span className="font-editorial text-2xl tracking-[-0.01em] text-ink">Kidchemy</span>
           </Link>
-          <nav className="hidden items-center gap-1 lg:flex">
-            {AUDIENCES.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => goTab(a.id)}
-                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-ink-soft transition-colors hover:bg-paper-2 hover:text-ink"
-              >
-                For {a.tab.toLowerCase()}
+          <nav className="hidden items-center gap-7 text-sm text-ink-soft lg:flex">
+            {NAV.map(([l, id]) => (
+              <button key={id} type="button" onClick={() => goTab(id)} className="kl-nav">
+                {l}
               </button>
             ))}
-            <a
-              href="#about"
-              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-ink-soft transition-colors hover:bg-paper-2 hover:text-ink"
-            >
-              About
-            </a>
+            <a href="#safety" className="kl-nav">Safety</a>
+            <a href="#about" className="kl-nav">About</a>
           </nav>
-          <div className="flex items-center gap-2">
-            <Button as={Link} to="/login" size="sm" variant="quiet">
+          <div className="flex items-center gap-4">
+            <Link to="/login" className="kl-nav text-sm text-ink-soft">
               Sign in
-            </Button>
-            <Button as="a" href="#pilot" size="sm" variant="primary">
-              Pilot with us
-            </Button>
+            </Link>
+            <PilotButton />
           </div>
         </div>
       </header>
 
       {/* ── Hero ────────────────────────────────────────────── */}
-      <section className="relative mx-auto grid max-w-6xl items-center gap-8 px-5 pb-12 pt-12 sm:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-6 lg:pb-20 lg:pt-20">
-        <div>
-          <p
-            className="kc-rise mb-6 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-accent-line bg-accent-tint px-3 py-1 text-2xs font-bold uppercase tracking-[0.14em] text-accent-ink"
-            style={{ animationDelay: '100ms' }}
-          >
-            NEP 2020 · HPC-ready · KG to Class 8
-          </p>
-          <h1 className="font-display text-[2.7rem] font-semibold leading-[1.02] tracking-[-0.02em] text-ink sm:text-6xl lg:text-[4.6rem]">
+      <section className="mx-auto grid max-w-[88rem] gap-10 px-5 pb-28 pt-14 md:px-10 lg:grid-cols-12 lg:gap-0 lg:pb-36 lg:pt-20">
+        <div className="relative z-10 lg:col-start-1 lg:col-end-8 lg:row-start-1 lg:pt-10">
+          <h1 className="font-editorial text-[3.6rem] leading-[0.9] tracking-[-0.025em] text-ink sm:text-[5.6rem] lg:text-[6.6rem] xl:text-[7.6rem]">
             <span className="kc-line">
-              <span style={{ animationDelay: '150ms' }}>Every child is</span>
+              <span style={{ animationDelay: '120ms' }}>Marks say</span>
             </span>
             <span className="kc-line">
-              <span style={{ animationDelay: '280ms' }}>more than the</span>
+              <span style={{ animationDelay: '240ms' }}>how much.</span>
             </span>
             <span className="kc-line">
-              <span style={{ animationDelay: '410ms' }} className="text-accent">
-                number on their
-              </span>
-            </span>
-            <span className="kc-line">
-              <span style={{ animationDelay: '540ms' }} className="text-accent">
-                report card.
+              <span style={{ animationDelay: '420ms' }}>
+                We show <em className="text-accent">who.</em>
               </span>
             </span>
           </h1>
-          <p
-            className="kc-rise mt-6 max-w-xl text-lg leading-relaxed text-ink-soft"
-            style={{ animationDelay: '800ms' }}
-          >
-            Teachers notice extraordinary things every day and have nowhere to
-            put them. Kidchemy turns a few taps a week into a living portrait of
-            every child, for the parent, the school, and the Holistic Progress
-            Card your school needs.
+          <p className="kc-rise mt-10 max-w-[30rem] text-lg leading-[1.75] text-ink-soft sm:text-xl" style={{ animationDelay: '700ms' }}>
+            Teachers tap what they notice, two minutes a week. Every child gets a portrait their parents can read, and the school gets its Holistic Progress Card.
           </p>
-          <div
-            className="kc-rise mt-8 flex flex-wrap gap-3"
-            style={{ animationDelay: '950ms' }}
-          >
-            <Button as="a" href="#pilot" variant="primary" size="lg" iconRight={ArrowRight}>
-              Bring Kidchemy to your school
-            </Button>
-            <Button as="a" href="#sample" size="lg">
-              See a sample profile
-            </Button>
+          <div className="kc-rise mt-10 flex flex-wrap items-center gap-6" style={{ animationDelay: '850ms' }}>
+            <PilotButton size="lg" />
+            <a href="#try" className="kl-link text-base">
+              Try being the teacher
+            </a>
           </div>
-          <div
-            className="kc-rise mt-10 grid max-w-lg grid-cols-3 gap-4 border-t border-line pt-5"
-            style={{ animationDelay: '1100ms' }}
-          >
+          <dl className="kc-rise mt-16 flex max-w-lg flex-wrap gap-x-10 gap-y-4 border-t border-neutral-200/70 pt-5" style={{ animationDelay: '1000ms' }}>
             {[
               ['2 min', 'a week, per class'],
               ['0', 'essays for teachers'],
-              ['No app', 'for parents to install'],
+              ['No app', 'for parents'],
             ].map(([n, l]) => (
               <div key={l}>
-                <p className="font-display text-2xl font-semibold text-ink">{n}</p>
-                <p className="mt-0.5 text-xs leading-snug text-ink-faint">{l}</p>
+                <dt className="font-editorial text-3xl text-ink">{n}</dt>
+                <dd className="text-xs text-ink-faint">{l}</dd>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
-        <div className="relative">
-          <GrowthTree />
+        <div className="relative lg:col-start-7 lg:col-end-13 lg:row-start-1 lg:-mt-6 xl:-mr-8">
+          <HeroTree />
         </div>
       </section>
 
-      {/* ── Marquee of verbs ────────────────────────────────── */}
-      <div
-        className="overflow-hidden border-y border-line bg-card py-4"
-        aria-hidden="true"
-      >
+      {/* ── Marquee ─────────────────────────────────────────── */}
+      <div className="overflow-hidden border-y border-neutral-200/70 py-5" aria-hidden="true">
         <div className="kc-marquee">
-          {[...MARQUEE, ...MARQUEE].map((m, i) => (
-            <span
-              key={i}
-              className="flex items-center gap-6 whitespace-nowrap px-3 font-display text-xl italic text-ink-soft sm:text-2xl"
-            >
-              {m}
-              <span className="text-accent not-italic">✦</span>
+          {[...MOMENTS.slice(0, 12), ...MOMENTS.slice(0, 12)].map(([m], i) => (
+            <span key={i} className="flex items-center gap-8 whitespace-nowrap px-4 font-editorial text-2xl italic text-ink-soft sm:text-3xl">
+              {m.charAt(0).toUpperCase() + m.slice(1)}
+              <span className="h-1.5 w-1.5 rounded-full bg-accent not-italic" />
             </span>
           ))}
         </div>
       </div>
 
-      {/* ── 01 The problem ──────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <Reveal>
-          <Eyebrow n="01">The problem</Eyebrow>
-        </Reveal>
-        <Reveal delay={80}>
-          <p className="max-w-4xl font-display text-3xl font-semibold leading-[1.15] tracking-[-0.015em] text-ink sm:text-5xl">
-            A child who scores 58% gets called weak. That same child might ask
-            the best questions in the room.
-          </p>
-        </Reveal>
-        <div className="mt-14 grid gap-px overflow-hidden rounded-[18px] border border-line bg-line sm:grid-cols-3">
-          {[
-            {
-              who: 'The teacher',
-              icon: Feather,
-              text: 'Sees forty children, deeply, every day. At the parent meeting, she has marks and memory, and a queue at the door.',
-            },
-            {
-              who: 'The parent',
-              icon: Heart,
-              text: 'Gets a percentage twice a year. Chases marks, because marks are the only signal anyone gives them.',
-            },
-            {
-              who: 'The child',
-              icon: Sprout,
-              text: 'Is ranked against classmates and slowly learns to believe the number is who they are.',
-            },
-          ].map((c, i) => (
-            <Reveal key={c.who} delay={i * 120} className="bg-card p-6 sm:p-8">
-              <c.icon size={20} className="text-accent" />
-              <p className="mt-4 font-display text-xl font-semibold text-ink">
-                {c.who}
-              </p>
-              <p className="mt-2 text-base leading-relaxed text-ink-soft">
-                {c.text}
-              </p>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 02 For everyone ─────────────────────────────────── */}
-      <section
-        id="for-everyone"
-        className="scroll-mt-16 border-y border-line bg-card py-20 sm:py-28"
-      >
-        <div className="mx-auto max-w-6xl px-5">
-          <Reveal>
-            <Eyebrow n="02">One set of taps, four people served</Eyebrow>
-          </Reveal>
-          <Reveal delay={80}>
-            <h2 className="max-w-3xl font-display text-3xl font-semibold leading-tight tracking-[-0.015em] text-ink sm:text-[2.75rem]">
-              Built for everyone who has a stake in a child.
-            </h2>
-          </Reveal>
-
-          <Reveal delay={160}>
-            <div
-              role="tablist"
-              aria-label="Who is it for"
-              className="kc-scroll mt-10 flex gap-2 overflow-x-auto pb-1"
-            >
-              {AUDIENCES.map((a, i) => (
-                <button
-                  key={a.id}
-                  role="tab"
-                  type="button"
-                  aria-selected={tab === a.id}
-                  onClick={() => setTab(a.id)}
-                  className={cx(
-                    'flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold transition-all',
-                    tab === a.id
-                      ? 'border-ink bg-ink text-white'
-                      : 'border-line bg-paper text-ink-soft hover:border-ink-faint/50 hover:text-ink'
-                  )}
-                >
-                  <span className="kc-tnum text-2xs opacity-60">0{i + 1}</span>
-                  <a.icon size={15} />
-                  {a.tab}
-                </button>
-              ))}
-            </div>
-          </Reveal>
-
-          <div
-            key={aud.id}
-            role="tabpanel"
-            className="kc-tab-panel mt-10 grid items-start gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14"
-          >
-            <div>
-              <h3 className="font-display text-3xl font-semibold leading-tight text-ink sm:text-4xl">
-                {aud.headline}
-              </h3>
-              <p className="mt-4 max-w-xl border-l-2 border-accent-line pl-4 text-lg leading-relaxed text-ink-soft">
-                {aud.pain}
-              </p>
-              <div className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
-                {aud.gives.map((g) => (
-                  <div key={g.title}>
-                    <p className="flex items-center gap-2 text-base font-bold text-ink">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-tint text-accent">
-                        <Check size={12} strokeWidth={3} />
-                      </span>
-                      {g.title}
-                    </p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-                      {g.body}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="lg:pt-2">
-              <Visual />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 03 How it works ─────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <Reveal>
-          <Eyebrow n="03">How it works</Eyebrow>
-        </Reveal>
-        <Reveal delay={80}>
-          <h2 className="max-w-3xl font-display text-3xl font-semibold leading-tight tracking-[-0.015em] text-ink sm:text-[2.75rem]">
-            Four steps. None of them adds an hour to a teacher&rsquo;s week.
-          </h2>
-        </Reveal>
-        <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-          {STEPS.map((s, i) => (
-            <Reveal key={s.title} delay={i * 120} className="relative">
-              <p className="font-display text-6xl font-semibold leading-none text-accent-line">
-                0{i + 1}
-              </p>
-              <div className="mt-5 h-px w-full bg-line" />
-              <s.icon size={18} className="mt-5 text-accent" />
-              <h3 className="mt-3 font-display text-xl font-semibold leading-snug text-ink">
-                {s.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{s.body}</p>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 04 The expanding statement + HPC ────────────────── */}
-      <section ref={expandRef} className="relative">
-        <div className="kc-expand bg-accent text-white">
-          <div className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-            <Eyebrow n="04" light>
-              NEP 2020 · Holistic Progress Card
-            </Eyebrow>
-            <p className="max-w-4xl font-display text-3xl font-semibold leading-[1.12] tracking-[-0.015em] sm:text-5xl">
-              It sits beside the report card. It never replaces it. And it
-              writes the card your school is being asked for.
-            </p>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/80">
-              The PARAKH Holistic Progress Card asks for five domains, self,
-              peer and parent voice, and a landscape of levels instead of
-              marks. Kidchemy maps every tap to it, for the foundational,
-              preparatory and middle stages.
-            </p>
-            <div className="mt-12 grid gap-3 sm:grid-cols-5">
-              {HPC_DOMAINS_SHORT.map((d, i) => (
-                <div
-                  key={d}
-                  className="rounded-[14px] border border-white/20 bg-white/[0.06] p-4"
-                >
-                  <p className="kc-tnum text-2xs font-bold text-white/60">
-                    Domain {i + 1}
-                  </p>
-                  <p className="mt-1 font-display text-lg font-semibold leading-snug">
-                    {d}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex flex-wrap items-center gap-2 text-sm text-white/80">
-              <span className="mr-1 font-semibold text-white">Levels, not marks:</span>
-              {['Stream', 'Mountain', 'Sky'].map((l, i) => (
-                <span
-                  key={l}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 font-semibold"
-                >
-                  {l}
-                  {i < 2 && <ArrowRight size={12} className="opacity-60" />}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 05 Sample profile ───────────────────────────────── */}
-      <section id="sample" className="scroll-mt-16 mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
-          <div>
-            <Reveal>
-              <Eyebrow n="05">What a parent reads</Eyebrow>
-            </Reveal>
-            <Reveal delay={80}>
-              <h2 className="font-display text-3xl font-semibold leading-tight tracking-[-0.015em] text-ink sm:text-[2.75rem]">
-                Not a dashboard. A letter about their child.
-              </h2>
-            </Reveal>
-            <Reveal delay={160}>
-              <p className="mt-5 text-lg leading-relaxed text-ink-soft">
-                Written in plain language, readable in two minutes on any
-                phone. Every line comes from something a teacher actually saw,
-                and it says when it has not seen enough yet.
-              </p>
-              <ul className="mt-6 space-y-2.5 text-sm text-ink-soft">
-                {[
-                  'Who your child is',
-                  'What they do well, in bands, never scores',
-                  'How they are growing, term by term',
-                  'What to try at home this month',
-                  'Questions to ask them tonight',
-                ].map((t) => (
-                  <li key={t} className="flex items-center gap-2.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                    {t}
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-          </div>
-
-          <Reveal delay={120}>
-            <article className="relative rounded-[22px] border border-line bg-card p-6 shadow-[var(--shadow-pop)] sm:p-10">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft pb-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-moss-tint font-display text-lg font-semibold text-moss">
-                    M
-                  </span>
-                  <div>
-                    <p className="font-display text-xl font-semibold text-ink">
-                      Meera, Class 3B
-                    </p>
-                    <p className="text-xs text-ink-faint">
-                      Built from 46 observations by 3 teachers, June to
-                      September
-                    </p>
-                  </div>
-                </div>
-                <span className="rounded-full bg-paper-2 px-2.5 py-1 text-2xs font-bold uppercase tracking-[0.1em] text-ink-faint">
-                  Sample
-                </span>
-              </div>
-
-              <p className="kc-eyebrow mt-6">Who Meera is</p>
-              <p className="mt-2 font-display text-xl leading-relaxed text-ink sm:text-2xl">
-                Meera tests ideas out loud. When something puzzles her she asks
-                the second question, the one most children skip, and then she
-                draws it until it makes sense.
-              </p>
-
-              <div className="mt-7 grid gap-6 sm:grid-cols-2">
-                <div>
-                  <p className="kc-eyebrow">At her best when</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                    She can work with her hands first and explain after. Long
-                    silent writing tasks hide what she knows.
-                  </p>
-                </div>
-                <div>
-                  <p className="kc-eyebrow">Next step for her</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                    Turning a spoken explanation into three written lines. The
-                    gap is expression, not understanding.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-7 rounded-[14px] bg-moss-tint p-5">
-                <p className="kc-eyebrow text-moss!">Try this at home</p>
-                <ul className="mt-2 space-y-1.5 text-sm text-ink-soft">
-                  <li>· Ask her to teach you her homework, instead of checking it.</li>
-                  <li>· Give her something broken to take apart and fix.</li>
-                </ul>
-              </div>
-
-              <div className="mt-5 flex items-start gap-3 rounded-[14px] border border-line p-5">
-                <MessageCircle size={18} className="mt-0.5 shrink-0 text-accent" />
-                <div>
-                  <p className="kc-eyebrow">Ask her tonight</p>
-                  <p className="mt-1 font-display text-lg text-ink">
-                    &ldquo;What&rsquo;s something you figured out by yourself
-                    this week?&rdquo;
-                  </p>
-                </div>
-              </div>
-            </article>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── 06 Why you can believe it ───────────────────────── */}
-      <section className="border-y border-line bg-card py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-5">
-          <Reveal>
-            <Eyebrow n="06">Why you can believe it</Eyebrow>
-          </Reveal>
-          <Reveal delay={80}>
-            <h2 className="max-w-3xl font-display text-3xl font-semibold leading-tight tracking-[-0.015em] text-ink sm:text-[2.75rem]">
-              Most products like this become a horoscope. Four decisions keep
-              this one honest.
-            </h2>
-          </Reveal>
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {PROOFS.map((p, i) => (
-              <Reveal
-                key={p.title}
-                delay={i * 100}
-                className="rounded-[18px] border border-line bg-paper p-6"
-              >
-                <p.icon size={20} className="text-moss" />
-                <h3 className="mt-4 font-display text-lg font-semibold text-ink">
-                  {p.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-soft">{p.body}</p>
-              </Reveal>
-            ))}
-          </div>
-          <Reveal delay={200} className="mt-14">
-            <p className="kc-eyebrow mb-4">Built on a century of practice</p>
-            <div className="flex flex-wrap gap-2">
-              {Object.values(FRAMEWORKS).map((f) => (
-                <span
-                  key={f.id}
-                  title={f.oneLine}
-                  className="rounded-full border border-line bg-paper px-3.5 py-1.5 text-sm font-semibold text-ink-soft"
-                >
-                  {f.label}
-                </span>
-              ))}
-            </div>
-            <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-faint">
-              What we refused matters too. Learning styles are not supported by
-              the evidence, so Kidchemy never calls a child a visual learner.
-              And it names no careers below Class 9.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── 07 About ────────────────────────────────────────── */}
-      <section id="about" className="scroll-mt-16 mx-auto max-w-6xl px-5 py-20 sm:py-28">
-        <div className="grid items-start gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-          <Reveal className="lg:sticky lg:top-24">
-            <figure>
-              <div className="relative aspect-[4/5] w-full max-w-md overflow-hidden rounded-[22px] bg-accent">
-                {photoOk ? (
-                  <img
-                    src={FOUNDER.photo}
-                    alt={`${FOUNDER.name}, founder of Kidchemy`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={() => setPhotoOk(false)}
-                  />
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-white">
-                    <Mark size={96} tone="white" />
-                    <span className="text-2xs font-bold uppercase tracking-[0.16em] text-white/60">
-                      Photo coming soon
-                    </span>
-                  </div>
-                )}
-              </div>
-              <figcaption className="mt-4 flex items-baseline justify-between gap-3 border-t border-line pt-3">
-                <span className="font-display text-lg font-semibold text-ink">
-                  {FOUNDER.name}
-                </span>
-                <span className="text-xs text-ink-faint">
-                  {[FOUNDER.role, FOUNDER.college].filter(Boolean).join(' · ')}
-                </span>
-              </figcaption>
-            </figure>
-          </Reveal>
-
-          <div>
-            <Reveal>
-              <Eyebrow n="07">Why I&rsquo;m building this</Eyebrow>
-            </Reveal>
-            <Reveal delay={80}>
-              <h2 className="font-display text-3xl font-semibold leading-[1.12] tracking-[-0.015em] text-ink sm:text-[2.9rem]">
-                I&rsquo;m {FOUNDER.name}. I believe every child deserves to be
-                described, not just measured.
-              </h2>
-            </Reveal>
-            <Reveal delay={160} className="mt-7 space-y-5 text-lg leading-relaxed text-ink-soft">
-              <p>
-                {FOUNDER.college ? `I'm a student at ${FOUNDER.college}. ` : ''}
-                Like most of us, I grew up in a system that folds a whole year
-                of a child&rsquo;s life into one number on one sheet of paper.
-                That number decides how a child is spoken about at school, at
-                the dinner table, and eventually, in their own head.
-              </p>
-              <p>
-                But teachers see so much more. The child who asks the question
-                no one else thought of. The one who quietly helps a friend
-                catch up. The one who rebuilds the model five times. None of
-                it has anywhere to go, so it disappears.{' '}
-                <span className="font-semibold text-ink">
-                  Kidchemy gives it somewhere to go.
-                </span>
-              </p>
-            </Reveal>
-
-            <Reveal delay={220}>
-              <div className="mt-10 rounded-[18px] bg-ink p-6 text-white sm:p-8">
-                <p className="text-2xs font-bold uppercase tracking-[0.16em] text-white/60">
-                  The vision
-                </p>
-                <p className="mt-3 font-display text-2xl leading-snug sm:text-[1.75rem]">
-                  A country where every report card comes with a portrait.
-                  Where a teacher&rsquo;s best observations outlive the week.
-                  Where a parent&rsquo;s first question is &ldquo;what lights
-                  her up?&rdquo; and not &ldquo;what did she get?&rdquo;
-                </p>
-              </div>
-            </Reveal>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {[
-                ['Now', 'Two pilot schools this term, working side by side with their teachers.'],
-                ['Next', 'Every Holistic Progress Card written from evidence, not from memory the night before.'],
-                ['Always', 'Free for parents. No ads. Children’s data stays with their school.'],
-              ].map(([k, v], i) => (
-                <Reveal
-                  key={k}
-                  delay={260 + i * 90}
-                  className="rounded-[14px] border border-line bg-card p-5"
-                >
-                  <p className="text-2xs font-bold uppercase tracking-[0.14em] text-accent">
-                    {k}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">{v}</p>
-                </Reveal>
-              ))}
-            </div>
-
-            <Reveal delay={400}>
-              <p className="mt-10 font-display text-2xl italic leading-snug text-ink">
-                &ldquo;A child is not a number. Let&rsquo;s stop introducing
-                them as one.&rdquo;
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button as="a" href={`mailto:${FOUNDER.email}`} icon={MessageCircle}>
-                  Write to me
-                </Button>
-                {FOUNDER.linkedin && (
-                  <Button
-                    as="a"
-                    href={FOUNDER.linkedin}
-                    target="_blank"
-                    rel="noreferrer"
-                    iconRight={ArrowUpRight}
-                  >
-                    LinkedIn
-                  </Button>
-                )}
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 08 Pilot ────────────────────────────────────────── */}
-      <section id="pilot" className="scroll-mt-16 border-t border-line bg-paper-2 py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-5">
-          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
-            <div>
-              <Reveal>
-                <Eyebrow n="08">Pilot with us</Eyebrow>
-              </Reveal>
-              <Reveal delay={80}>
-                <h2 className="font-display text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-ink sm:text-6xl">
-                  One class. One term. Set up in person.
-                </h2>
-              </Reveal>
-              <Reveal delay={160}>
-                <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-                  We are opening Kidchemy to a small number of founding
-                  schools. We sit with your teachers for the first sweep, print
-                  the first parent meeting sheets, and stand in the room when
-                  parents scan their first report card.
-                </p>
-                <div className="mt-8 flex flex-wrap gap-3">
-                  <Button
-                    as="a"
-                    href={PILOT_MAILTO}
-                    variant="primary"
-                    size="lg"
-                    iconRight={ArrowRight}
-                  >
-                    Book a pilot conversation
-                  </Button>
-                  <Button as={Link} to="/login" size="lg">
-                    I already have an account
-                  </Button>
-                </div>
-                <p className="mt-4 text-xs text-ink-faint">
-                  Teachers need a school code. Parents need the code on their
-                  child&rsquo;s report card sticker.
-                </p>
-              </Reveal>
-            </div>
-
-            <Reveal delay={120}>
-              <div className="rounded-[22px] border border-line bg-card p-6 shadow-[var(--shadow-raised)] sm:p-8">
-                <p className="kc-eyebrow">Your school gets</p>
-                <ul className="mt-3 space-y-3">
-                  {[
-                    'Roster import from what you already export',
-                    'In-person setup and teacher onboarding',
-                    'Printed PTM sheets and QR report card stickers',
-                    'A term-end Holistic Progress Card for every child',
-                    'A short impact report for your management',
-                  ].map((t) => (
-                    <li key={t} className="flex items-start gap-2.5 text-sm text-ink-soft">
-                      <Check size={16} strokeWidth={2.6} className="mt-0.5 shrink-0 text-moss" />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-                <p className="kc-eyebrow mt-7">We ask for</p>
-                <ul className="mt-3 space-y-3">
-                  {[
-                    'One or two teachers willing to try it for a term',
-                    'Fifteen minutes of feedback every two weeks',
-                    'Permission to be present at one parent meeting',
-                  ].map((t) => (
-                    <li key={t} className="flex items-start gap-2.5 text-sm text-ink-soft">
-                      <Users size={15} className="mt-0.5 shrink-0 text-accent" />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
+      <OneNumberStory />
+      <Audiences tab={tab} setTab={setTab} />
+      <TrySweep />
+      <HpcAndProof />
+      <Letter />
+      <Safety />
+      <About />
 
       {/* ── Footer ─────────────────────────────────────────── */}
       <footer className="bg-ink text-white">
-        <div className="mx-auto max-w-6xl px-5 py-14">
-          <div className="flex flex-wrap items-end justify-between gap-8">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <Mark size={34} tone="light" />
-                <span className="font-display text-2xl font-semibold tracking-[-0.015em]">
-                  Kidchemy
-                </span>
-              </div>
-              <p className="mt-3 text-2xs font-bold uppercase tracking-[0.2em] text-white/50">
-                A truer picture of every child
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/70">
-              {AUDIENCES.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => goTab(a.id)}
-                  className="hover:text-white"
-                >
-                  For {a.tab.toLowerCase()}
-                </button>
-              ))}
-              <a href="#about" className="hover:text-white">
-                About
-              </a>
-              <Link to="/login" className="hover:text-white">
-                Sign in
-              </Link>
+        <div className="mx-auto max-w-[88rem] px-5 pb-12 pt-28 md:px-10">
+          <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:items-end">
+            <p className="font-editorial text-5xl leading-[0.98] tracking-[-0.015em] sm:text-[5rem]">
+              A truer picture of <em className="text-white/60">every</em> child.
+            </p>
+            <div className="lg:justify-self-end">
+              <PilotButton size="lg" light />
             </div>
           </div>
-          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/50">
-            <p>
-              Children&rsquo;s data stays with the school. No advertising, no
-              third-party analytics on parent pages, ever.
-            </p>
+          <div className="mt-20 flex flex-wrap items-center justify-between gap-6 border-t border-white/10 pt-6">
+            <div className="flex items-center gap-2.5">
+              <Mark size={28} tone="light" />
+              <span className="font-editorial text-xl">Kidchemy</span>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/65">
+              {NAV.map(([l, id]) => (
+                <button key={id} type="button" onClick={() => goTab(id)} className="transition-colors duration-200 hover:text-white">
+                  For {l.toLowerCase()}
+                </button>
+              ))}
+              <a href="#safety" className="transition-colors duration-200 hover:text-white">Safety</a>
+              <Link to="/privacy" className="transition-colors duration-200 hover:text-white">Privacy</Link>
+              <a href="#about" className="transition-colors duration-200 hover:text-white">About</a>
+              <Link to="/login" className="transition-colors duration-200 hover:text-white">Sign in</Link>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-white/45">
+            <p>Children&rsquo;s data stays with the school. No advertising, no trackers, ever.</p>
             <p>© {new Date().getFullYear()} Kidchemy</p>
           </div>
         </div>

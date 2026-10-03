@@ -13,4 +13,4 @@ export const SCHOOL = {
   teacher: 'Ms. Rekha Iyer',
 }
 
-export const TEACHER_CODE_HINT = 'VIDYA-7C'
+// Teacher codes are never printed in the app. Admins mint them at /admin/people.

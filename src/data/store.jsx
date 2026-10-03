@@ -38,6 +38,15 @@ const DEFAULT_SETTINGS = {
     watchTagsSchoolOnly: true,
     overdueDays: 21,
   },
+  privacy: {
+    noticeVersion: '2026-10',
+    retentionMonthsAfterLeaving: 12,
+    auditLogDays: 400,
+    linkAttemptsPerHour: 5,
+    maxGuardiansPerChild: 4,
+    requestDueDays: 30,
+    grievanceOfficer: { name: '', email: '', phone: '' },
+  },
 }
 
 export function StoreProvider({ children }) {

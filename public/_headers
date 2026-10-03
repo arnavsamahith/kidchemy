@@ -1,0 +1,18 @@
+# Netlify / Cloudflare Pages equivalent of the headers in vercel.json.
+/*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Cross-Origin-Opener-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+
+/teacher/*
+  X-Robots-Tag: noindex, nofollow
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+/parent/*
+  X-Robots-Tag: noindex, nofollow
+/profile/*
+  X-Robots-Tag: noindex, nofollow

@@ -518,3 +518,8 @@ on conflict (key) do nothing;
 --
 -- If no row updates, the account has not signed up yet. Sign up in the app
 -- first (any role), then run the update.
+
+-- ─── 8. Now run security.sql ────────────────────────────────────────
+-- security.sql (v4) replaces the policies above with school-scoped ones,
+-- locks role changes, adds consent, rights requests and retention.
+-- Run it every time you run this file. See docs/SECURITY.md.

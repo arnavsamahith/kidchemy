@@ -1,3 +1,4 @@
+import { randomFrom } from './safety.js'
 // Roster import.
 //
 // A teacher will not type forty names. This parses the format the school
@@ -122,13 +123,9 @@ function slug(s) {
  * for if it is photographed.
  */
 export function makeAccessCode() {
-  const alphabet = 'ACDEFGHJKLMNPQRTUVWXY3479'
-  let out = ''
-  for (let i = 0; i < 8; i += 1) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)]
-    if (i === 3) out += '-'
-  }
-  return out
+  // crypto.getRandomValues, not Math.random: these codes open a child's page.
+  const raw = randomFrom('ACDEFGHJKLMNPQRTUVWXY3479', 8)
+  return `${raw.slice(0, 4)}-${raw.slice(4)}`
 }
 
 /**

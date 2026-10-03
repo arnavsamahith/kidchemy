@@ -376,9 +376,9 @@ export async function loadAuditLog(limit = 200) {
 
 export async function writeAudit(action, entity, entityId, detail = {}) {
   try {
-    const { data } = await supabase.auth.getUser()
+    // actor_id and actor_role are stamped by the database (security.sql),
+    // so a browser cannot write an entry in someone else's name.
     await supabase.from('audit_log').insert({
-      actor_id: data?.user?.id || null,
       action,
       entity,
       entity_id: entityId ? String(entityId) : null,
@@ -387,6 +387,117 @@ export async function writeAudit(action, entity, entityId, detail = {}) {
   } catch {
     // Audit is best effort. Never block the teacher's work on it.
   }
+}
+
+/** Staff opened or exported a child's record (DPDP Rules r.6 access log). */
+export async function logAccess(studentId, what = 'profile') {
+  try {
+    await supabase.rpc('kc_log_access', { sid: studentId, what })
+  } catch {
+    /* best effort */
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Consent, guardians and rights requests (security.sql sections 5–7)
+   ══════════════════════════════════════════════════════════════════ */
+
+async function rpc(name, args) {
+  const { data, error } = await supabase.rpc(name, args)
+  if (error) throw error
+  return data
+}
+
+export const pendingLinks = () => rpc('kc_pending_links')
+export const confirmLink = (sid, notice, purposes) =>
+  rpc('kc_confirm_link', { sid, notice_version: notice, purposes })
+export const withdrawConsent = (sid) => rpc('kc_withdraw_consent', { sid })
+export const studentGuardians = (sid) => rpc('kc_student_guardians', { sid })
+export const revokeGuardian = (sid, pid) => rpc('kc_revoke_guardian', { sid, pid })
+export const rotateAccessCode = (sid) => rpc('kc_rotate_access_code', { sid })
+export const eraseStudent = (sid, reason) => rpc('kc_erase_student', { sid, reason })
+export const applyRetention = () => rpc('kc_apply_retention')
+
+export async function loadConsents(studentId) {
+  let q = supabase.from('consents').select('*').order('created_at', { ascending: false })
+  if (studentId) q = q.eq('student_id', studentId)
+  const { data, error } = await q
+  if (error) throw error
+  return data || []
+}
+
+export async function fileDataRequest({ studentId, kind, body }) {
+  const { error } = await supabase.from('data_requests').insert({
+    student_id: studentId || null,
+    kind,
+    body: (body || '').slice(0, 4000),
+  })
+  if (error) throw error
+  writeAudit(`request.${kind}`, 'student', studentId)
+}
+
+export async function loadDataRequests() {
+  const { data, error } = await supabase
+    .from('data_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function updateDataRequest(id, patch) {
+  const { data: u } = await supabase.auth.getUser()
+  const done = patch.status === 'done' || patch.status === 'rejected'
+  const { error } = await supabase
+    .from('data_requests')
+    .update({
+      ...patch,
+      resolved_at: done ? new Date().toISOString() : null,
+      resolved_by: done ? u?.user?.id || null : null,
+    })
+    .eq('id', id)
+  if (error) throw error
+  writeAudit('request.update', 'data_request', id, { status: patch.status })
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Two-factor (TOTP) for admin accounts
+   Once an admin has a verified factor, admin powers need it in the
+   session: kc_is_admin() checks the JWT's aal claim.
+   ══════════════════════════════════════════════════════════════════ */
+
+export async function mfaStatus() {
+  const [{ data: aal }, { data: factors }] = await Promise.all([
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    supabase.auth.mfa.listFactors(),
+  ])
+  return {
+    current: aal?.currentLevel || 'aal1',
+    next: aal?.nextLevel || 'aal1',
+    totp: (factors?.totp || []).filter((f) => f.status === 'verified'),
+  }
+}
+
+export async function mfaEnroll() {
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: 'totp',
+    friendlyName: `Kidchemy ${new Date().toISOString().slice(0, 10)}`,
+  })
+  if (error) throw error
+  return data // { id, totp: { qr_code, secret, uri } }
+}
+
+export async function mfaVerify(factorId, code) {
+  const { error } = await supabase.auth.mfa.challengeAndVerify({
+    factorId,
+    code: String(code).replace(/\s/g, ''),
+  })
+  if (error) throw error
+}
+
+export async function mfaUnenroll(factorId) {
+  const { error } = await supabase.auth.mfa.unenroll({ factorId })
+  if (error) throw error
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -410,7 +521,9 @@ export async function signUp({ email, password, role, fullName, code }) {
       data: {
         role,
         full_name: fullName?.trim() || '',
-        code: code?.trim() || '',
+        // Only teachers send a code at signup. Parents link a child after
+        // signing in, with the child's first name and an explicit consent.
+        code: role === 'teacher' ? code?.trim() || '' : '',
       },
     },
   })
@@ -432,10 +545,19 @@ export async function fetchProfile(userId) {
   return data
 }
 
-export async function linkChild(code) {
+export async function linkChild({ code, firstName, notice, purposes, relationship }) {
   const { data, error } = await supabase.rpc('kc_link_child', {
-    child_code: code.trim(),
+    child_code: String(code || '').trim(),
+    child_first: String(firstName || '').trim(),
+    notice_version: notice,
+    purposes,
+    relationship: relationship || null,
   })
   if (error) throw error
-  return data
+  if (!data?.ok) {
+    const err = new Error(data?.error || 'UNKNOWN_CODE')
+    err.left = data?.left
+    throw err
+  }
+  return data.student_id
 }

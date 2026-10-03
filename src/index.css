@@ -85,6 +85,11 @@
     "Times New Roman", serif;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif;
+  /* Public site only (landing, privacy). Instrument Serif has a single
+     weight, so the size contrast does the work, not boldness. */
+  --font-editorial: "Instrument Serif", "Source Serif 4", Georgia, serif;
+  --font-satoshi: "Satoshi", "Plus Jakarta Sans", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
 
   --text-2xs: 0.6875rem;   /* 11px, labels and counts only */
   --text-2xs--line-height: 1.4;
@@ -397,5 +402,496 @@ p {
   }
   .kc-expand {
     clip-path: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Public site (.kl). Editorial: one serif at dramatic sizes, a quiet
+   sans for reading, hairline borders, slow scroll-driven motion and
+   200ms hover states. Scoped so none of it leaks into the app.
+   ══════════════════════════════════════════════════════════════════ */
+
+.kl {
+  --kl-line: oklch(92.2% 0 0); /* Tailwind neutral-200 */
+  font-family: var(--font-satoshi);
+  line-height: 1.7;
+}
+.kl .font-editorial,
+.kl h1,
+.kl h2,
+.kl h3 {
+  font-family: var(--font-editorial);
+  font-weight: 400;
+}
+.kl em {
+  font-style: italic;
+}
+.kl .kc-line {
+  padding-right: 0.1em;
+  padding-bottom: 0.08em;
+}
+
+.kl-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.kl-panel {
+  background: var(--color-card);
+  border: 1px solid color-mix(in oklab, var(--kl-line) 80%, transparent);
+  border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(22, 19, 13, 0.03), 0 24px 60px -28px rgba(22, 19, 13, 0.18);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+/* Buttons and links */
+.kl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+.kl-btn:active {
+  transform: scale(0.98);
+}
+.kl-btn-dark {
+  background: var(--color-ink);
+  color: #fff;
+}
+.kl-btn-dark:hover {
+  background: var(--color-accent);
+}
+.kl-btn-light {
+  background: #fff;
+  color: var(--color-ink);
+}
+.kl-btn-light:hover {
+  background: var(--color-accent-tint);
+}
+.kl-btn-ghost {
+  border: 1px solid var(--kl-line);
+  color: var(--color-ink);
+}
+.kl-btn-ghost:hover {
+  border-color: var(--color-ink);
+}
+.kl-btn-arrow {
+  transition: transform 200ms ease;
+}
+.kl-btn:hover .kl-btn-arrow {
+  transform: translateX(3px);
+}
+.kl-link {
+  color: var(--color-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-ink) 25%, transparent);
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 200ms ease, color 200ms ease;
+}
+.kl-link:hover {
+  color: var(--color-accent);
+  text-decoration-color: currentColor;
+}
+.kl-nav {
+  transition: color 200ms ease;
+}
+.kl-nav:hover {
+  color: var(--color-ink);
+}
+
+/* Name chips (sweep) */
+.kl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--kl-line);
+  background: var(--color-paper);
+  color: var(--color-ink-soft);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+.kl-chip:hover {
+  border-color: var(--color-ink-faint);
+  color: var(--color-ink);
+}
+.kl-chip.is-on {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+.kl-chip-lg {
+  padding: 0.5rem 1rem;
+  font-size: 0.9375rem;
+}
+.kl-chip-hint {
+  animation: kl-hint 2.6s ease-in-out infinite;
+}
+@keyframes kl-hint {
+  0%, 70%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 0%, transparent); }
+  80% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-accent) 22%, transparent); }
+}
+
+/* Growth ring when a branch grows */
+.kl-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kl-ring 900ms ease-out forwards;
+}
+@keyframes kl-ring {
+  from { opacity: 0.9; transform: scale(0.8); }
+  to { opacity: 0; transform: scale(2.4); }
+}
+
+/* Story: moments that collapse into a number */
+.kl-moment {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: min(270px, 62vw);
+  padding: 0.3rem 0.7rem 0.3rem 0.35rem;
+  border: 1px solid color-mix(in oklab, var(--kl-line) 85%, transparent);
+  background: var(--color-card);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.kl-moment.is-ordered {
+  max-width: calc(var(--cw, 200px) - 14px);
+  border-color: transparent;
+  background: transparent;
+  padding-left: 0;
+  color: var(--color-ink);
+}
+.kl-moment-date {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--color-paper-2);
+  padding: 0.12rem 0.45rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+.kl-moment.is-ordered .kl-moment-date {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-ink);
+}
+.kl-cap {
+  position: absolute;
+  inset: 0 auto auto 0;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 220ms ease, transform 400ms ease;
+  pointer-events: none;
+}
+.kl-cap.is-on {
+  opacity: 1;
+  transform: none;
+  transition: opacity 500ms ease 200ms, transform 800ms cubic-bezier(0.16, 1, 0.3, 1) 200ms;
+}
+.kl-cap-static {
+  position: static;
+  margin-bottom: 2rem;
+}
+
+/* Audience and viewer lists */
+.kl-tab {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.9rem;
+  border: 1px solid var(--kl-line);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-size: 0.9375rem;
+  color: var(--color-ink-soft);
+  text-align: left;
+  transition: color 200ms ease, border-color 200ms ease, background-color 200ms ease, padding 200ms ease;
+}
+.kl-tab.is-on {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .kl-tab {
+    border: 0;
+    border-top: 1px solid var(--kl-line);
+    border-radius: 0;
+    padding: 1.1rem 0;
+    font-family: var(--font-editorial);
+    font-size: 2rem;
+    line-height: 1.1;
+  }
+  .kl-tab-sm {
+    font-size: 1.45rem;
+    padding: 0.9rem 0;
+  }
+  .kl-tab:last-child {
+    border-bottom: 1px solid var(--kl-line);
+  }
+  .kl-tab:hover {
+    color: var(--color-ink);
+    padding-left: 0.4rem;
+  }
+  .kl-tab.is-on {
+    color: var(--color-accent);
+    padding-left: 0.4rem;
+  }
+}
+.kl-tab-arrow {
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.kl-tab.is-on .kl-tab-arrow,
+.kl-tab:hover .kl-tab-arrow {
+  opacity: 1;
+  transform: none;
+}
+
+/* HPC levels in the school card */
+.kl-level {
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  background: var(--color-paper-2);
+  color: var(--color-ink-faint);
+  transition: background-color 400ms ease, color 400ms ease;
+}
+.kl-level.is-on {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* Try-it class grid */
+.kl-seat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.55rem 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+  transition: border-color 200ms ease, color 200ms ease, background-color 200ms ease;
+}
+.kl-seat.is-seen {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.kl-seat-dot {
+  height: 0.6rem;
+  width: 0.6rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.45);
+  transition: background-color 300ms ease, transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.kl-seat.is-seen .kl-seat-dot {
+  border: 0;
+  background: color-mix(in oklab, var(--color-ramp-2) calc(40% + var(--n) * 20%), #fff);
+  transform: scale(calc(1 + var(--n) * 0.2));
+}
+
+/* HPC wheel (on the teal band) */
+.kl-arc-in {
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: none;
+  cursor: pointer;
+  transition: fill 200ms ease;
+}
+.kl-arc-in:hover {
+  fill: rgba(255, 255, 255, 0.16);
+}
+.kl-arc-in.is-on {
+  fill: rgba(255, 255, 255, 0.22);
+}
+.kl-arc-track {
+  fill: rgba(255, 255, 255, 0.04);
+}
+.kl-arc-out {
+  fill: rgba(255, 255, 255, calc(0.28 + var(--lvl) * 0.22));
+  transition: fill 200ms ease;
+}
+g:hover > .kl-arc-out {
+  fill: rgba(255, 255, 255, 0.9);
+}
+.kl-arc-out.is-on {
+  fill: #fff;
+}
+.kl-arc-text {
+  fill: #fff;
+  font-family: var(--font-satoshi);
+  font-weight: 500;
+  pointer-events: none;
+}
+.kl-arc-label {
+  fill: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-satoshi);
+  font-size: 13px;
+  transition: fill 200ms ease;
+}
+.kl-arc-label.is-on {
+  fill: #fff;
+  font-weight: 700;
+}
+.kl-arc-center {
+  fill: #fff;
+  font-family: var(--font-editorial);
+  font-size: 24px;
+}
+.kl-arc-center-sub {
+  fill: rgba(255, 255, 255, 0.55);
+  font-family: var(--font-satoshi);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* The letter: evidence that unfolds inline */
+.kl-ev {
+  background-image: linear-gradient(var(--color-accent-line), var(--color-accent-line));
+  background-repeat: no-repeat;
+  background-position: 0 92%;
+  background-size: 0% 0.32em;
+  transition: background-size 600ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+.kl-ev.is-on {
+  background-size: 100% 0.32em;
+}
+.kl-ev-note {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  vertical-align: 0.3em;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--color-accent-tint);
+  color: var(--color-accent-ink);
+  font-family: var(--font-satoshi);
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  transition: max-width 700ms cubic-bezier(0.65, 0, 0.35, 1), opacity 300ms ease, padding 300ms ease, margin 300ms ease;
+}
+.kl-ev.is-on .kl-ev-note {
+  max-width: 100%;
+  opacity: 1;
+  white-space: normal;
+  margin: 0 0.3em;
+  padding: 0.05em 0.5em;
+}
+
+/* Toggle switch */
+.kl-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.kl-switch-track {
+  position: relative;
+  height: 1.6rem;
+  width: 2.8rem;
+  border-radius: 999px;
+  background: var(--kl-line);
+  transition: background-color 200ms ease;
+}
+.kl-switch-track.is-on {
+  background: var(--color-accent);
+}
+.kl-switch-thumb {
+  position: absolute;
+  left: 0.2rem;
+  top: 0.2rem;
+  height: 1.2rem;
+  width: 1.2rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 200ms ease;
+}
+.kl-switch-track.is-on .kl-switch-thumb {
+  transform: translateX(1.2rem);
+}
+
+/* Permission rows */
+.kl-perm {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  border-bottom: 1px solid var(--kl-line);
+  padding: 1rem 0.25rem;
+  font-size: 1rem;
+  color: var(--color-ink-faint);
+  transition: color 300ms ease, background-color 300ms ease, padding 300ms ease;
+}
+.kl-perm.is-open {
+  color: var(--color-ink);
+  padding-left: 0.75rem;
+  background: linear-gradient(90deg, var(--color-accent-tint), transparent 70%);
+}
+.kl-perm-icon {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--kl-line);
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.kl-perm.is-open .kl-perm-icon {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  transform: rotate(-8deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kl-chip-hint,
+  .kl-ring {
+    animation: none;
+  }
+  .kl-cap {
+    transition: none;
+  }
+}
+
+.kl svg g[role='button']:focus {
+  outline: none;
+}
+.kl svg g[role='button']:focus-visible .kl-arc-out {
+  fill: #fff;
+}
+@media (max-width: 767px) {
+  .kl-moment {
+    font-size: 0.75rem;
+  }
+  .kl-moment.is-ordered .kl-moment-date {
+    display: none;
   }
 }

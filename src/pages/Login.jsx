@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { GraduationCap, Heart, Info, ShieldCheck } from 'lucide-react'
+import { GraduationCap, Heart, Info, KeyRound, ShieldCheck } from 'lucide-react'
 import { useAuth, readableAuthError } from '../data/auth.jsx'
 import { Mark } from '../components/AppShell.jsx'
 import {
@@ -11,7 +11,7 @@ import {
   Input,
   cx,
 } from '../components/ui.jsx'
-import { TEACHER_CODE_HINT } from '../data/seed.js'
+import { mfaStatus, mfaVerify } from '../data/supabase.js'
 
 const ROLES = [
   {
@@ -20,17 +20,15 @@ const ROLES = [
     icon: GraduationCap,
     blurb: 'You log observations for your class.',
     codeLabel: 'School code',
-    codeHint: `Your coordinator has this. The pilot class code is ${TEACHER_CODE_HINT}.`,
-    codePlaceholder: 'VIDYA-7C',
+    codeHint: 'Your coordinator gives you this in person. It expires, and it only opens your own school.',
+    codePlaceholder: 'SCHOOL-CODE',
   },
   {
     id: 'parent',
     label: 'I am a parent',
     icon: Heart,
     blurb: "You read your child's profile.",
-    codeLabel: "Code from your child's report card",
-    codeHint: 'Printed on the Kidchemy sticker. You can also add it later.',
-    codePlaceholder: 'ABCD-1234',
+    codeLabel: null,
   },
 ]
 
@@ -44,7 +42,9 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
-  const { signIn, signUp, session, profile, ready } = useAuth()
+  const { signIn, signUp, signOut, session, profile, ready } = useAuth()
+  const [mfa, setMfa] = useState(null) // { factorId } while a second factor is owed
+  const [otp, setOtp] = useState('')
 
   const [mode, setMode] = useState(params.get('mode') === 'signup' ? 'signup' : 'signin')
   const [role, setRole] = useState('teacher')
@@ -54,13 +54,49 @@ export default function Login() {
   const [notice, setNotice] = useState(null)
 
   const noProfile = params.get('state') === 'no-profile'
+  const wasIdle = params.get('state') === 'idle'
 
-  // Already signed in: go where they belong.
+  // Already signed in: go where they belong, once any second factor is in.
   useEffect(() => {
     if (!ready || !session || !profile) return
-    const from = location.state?.from
-    navigate(from || homeFor(profile.role), { replace: true })
+    let alive = true
+    ;(async () => {
+      try {
+        const st = await mfaStatus()
+        if (!alive) return
+        if (st.next === 'aal2' && st.current !== 'aal2' && st.totp[0]) {
+          setMfa({ factorId: st.totp[0].id })
+          return
+        }
+      } catch {
+        /* no MFA configured on the project: carry on */
+      }
+      if (!alive) return
+      const from = location.state?.from
+      // Only follow in-app paths, never an absolute URL smuggled into state.
+      const safeFrom = typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') ? from : null
+      navigate(safeFrom || homeFor(profile.role), { replace: true })
+    })()
+    return () => {
+      alive = false
+    }
   }, [ready, session, profile, navigate, location.state])
+
+  const verifyOtp = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await mfaVerify(mfa.factorId, otp)
+      setMfa(null)
+      setOtp('')
+      navigate(homeFor(profile?.role), { replace: true })
+    } catch (err) {
+      setError(readableAuthError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
   const roleMeta = ROLES.find((r) => r.id === role)
@@ -131,12 +167,50 @@ export default function Login() {
               coordinator to set the role for you.
             </Callout>
           )}
+          {wasIdle && (
+            <Callout tone="neutral" icon={ShieldCheck} className="mb-4">
+              You were signed out after a while with no activity, so nobody
+              else at this device can open your class.
+            </Callout>
+          )}
           {notice && (
             <Callout tone="moss" className="mb-4">
               {notice}
             </Callout>
           )}
 
+          {mfa ? (
+            <Card>
+              <form onSubmit={verifyOtp} className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-ink">
+                  <KeyRound size={16} className="text-accent" /> Second step
+                </div>
+                <Field
+                  label="Six-digit code from your authenticator app"
+                  hint="This account can change any school's settings, so it needs both your password and your phone."
+                  error={error}
+                >
+                  <Input
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={8}
+                    autoFocus
+                    className="kc-tnum tracking-[0.3em]"
+                  />
+                </Field>
+                <div className="flex gap-2">
+                  <Button type="button" onClick={() => { setMfa(null); signOut() }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" loading={busy} className="flex-1 justify-center" disabled={otp.trim().length < 6}>
+                    Verify
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          ) : (
           <Card>
             <form onSubmit={submit} className="space-y-4">
               {mode === 'signup' && (
@@ -198,7 +272,11 @@ export default function Login() {
 
               <Field
                 label="Password"
-                hint={mode === 'signup' ? 'At least six characters.' : undefined}
+                hint={
+                  mode === 'signup'
+                    ? 'At least eight characters. A short sentence is easier to remember and harder to guess.'
+                    : undefined
+                }
                 required
               >
                 <Input
@@ -207,11 +285,19 @@ export default function Login() {
                   onChange={set('password')}
                   autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                   required
-                  minLength={6}
+                  minLength={mode === 'signup' ? 8 : 6}
                 />
               </Field>
 
-              {mode === 'signup' && (
+              {mode === 'signup' && role === 'parent' && (
+                <p className="rounded-[10px] bg-paper-2 px-3 py-2.5 text-xs leading-relaxed text-ink-soft">
+                  After you sign in, you will link your child with the code on
+                  their report card sticker and their first name, and you will
+                  see exactly what you are agreeing to first.
+                </p>
+              )}
+
+              {mode === 'signup' && role === 'teacher' && (
                 <Field
                   label={roleMeta.codeLabel}
                   hint={roleMeta.codeHint}
@@ -244,6 +330,7 @@ export default function Login() {
               </Button>
             </form>
           </Card>
+          )}
 
           <p className="mt-4 text-center text-sm text-ink-soft">
             {mode === 'signin' ? "No account yet? " : 'Already have one? '}
@@ -264,7 +351,10 @@ export default function Login() {
             A teacher account needs a school code, so the class roster is never
             open to whoever finds the link. A parent only ever sees the child
             whose code they hold, and only the observations a teacher chose to
-            share.
+            share.{' '}
+            <Link to="/privacy" className="font-semibold text-ink-soft underline underline-offset-2">
+              How we protect children’s data
+            </Link>
           </p>
         </div>
       </main>

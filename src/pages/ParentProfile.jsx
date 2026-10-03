@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -46,6 +46,7 @@ import {
 } from '../data/derive.js'
 import { PARENT_GUARDRAILS, stageForGrade } from '../data/pedagogy.js'
 import { classLabel } from '../data/roster.js'
+import { logAccess } from '../data/supabase.js'
 
 /* ─── A quiet section wrapper, for a page meant to be read ───── */
 
@@ -67,6 +68,12 @@ export default function ParentProfile() {
   const [sending, setSending] = useState(false)
 
   const student = getStudent(studentId)
+
+  // Staff opening the family view is an access to a child's record, and is
+  // logged (DPDP Rules r.6). A parent reading their own child is not.
+  useEffect(() => {
+    if (isTeacher && student?.id) logAccess(student.id, 'parent_view')
+  }, [isTeacher, student?.id])
 
   // The parent only ever sees shared observations. RLS enforces this on the
   // server too; this is belt and braces for the teacher preview.
@@ -160,7 +167,14 @@ export default function ParentProfile() {
                 Back to your view
               </Button>
             )}
-            <Button size="sm" icon={Printer} onClick={() => window.print()}>
+            <Button
+              size="sm"
+              icon={Printer}
+              onClick={() => {
+                if (isTeacher) logAccess(student.id, 'print')
+                window.print()
+              }}
+            >
               Print
             </Button>
           </div>
@@ -490,6 +504,14 @@ export default function ParentProfile() {
           </p>
           <p className="mt-2 text-xs text-ink-faint">
             {school?.name} - {classLabel(student)}
+          </p>
+          <p className="mt-3 text-xs text-ink-faint print:hidden">
+            <Link to="/privacy" className="underline underline-offset-2 hover:text-ink">
+              Who can see this page, and your rights
+            </Link>
+          </p>
+          <p className="mt-2 hidden text-2xs text-ink-faint print:block">
+            Confidential. About one child, for their family and school only.
           </p>
         </footer>
       </main>

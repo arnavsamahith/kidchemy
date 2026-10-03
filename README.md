@@ -102,7 +102,9 @@ different and defensible claim.
 ## Database
 
 Supabase, with row-level security doing the scoping. Paste
-`supabase/schema.sql` into the SQL editor. It is safe to re-run.
+`supabase/schema.sql` into the SQL editor, **then `supabase/security.sql`**.
+Both are safe to re-run, always in that order. Security, DPDP and
+child-safety notes, and the pre-launch checklist, are in `docs/SECURITY.md`.
 
 Three roles:
 

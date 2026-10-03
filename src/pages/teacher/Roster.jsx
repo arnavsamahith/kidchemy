@@ -35,6 +35,14 @@ import { profileDepth, topDimensions } from '../../data/derive.js'
 import { daysSince } from '../../data/analytics.js'
 import { byRoll, classLabel, makeAccessCode, parseRoster } from '../../data/roster.js'
 import { GRADES, SECTIONS } from '../../data/taxonomy.js'
+import { writeAudit } from '../../data/supabase.js'
+
+// Quote every cell, and defuse anything Excel would run as a formula.
+function csvCell(v) {
+  let t = String(v ?? '')
+  if (/^[=+\-@\t\r]/.test(t)) t = `'${t}`
+  return `"${t.replace(/"/g, '""')}"`
+}
 
 /* ─── Roster import ──────────────────────────────────────────── */
 
@@ -340,14 +348,16 @@ export default function Roster() {
     const body = rows
       .map((r) =>
         [
-          `"${r.student.name}"`,
+          r.student.name,
           r.student.studentCode || '',
           r.student.grade ?? '',
           r.student.section || '',
           r.student.rollNo ?? '',
           r.student.accessCode || '',
           r.obs.length,
-        ].join(',')
+        ]
+          .map(csvCell)
+          .join(',')
       )
       .join('\n')
     const blob = new Blob([`${header}\n${body}`], { type: 'text/csv' })
@@ -355,6 +365,8 @@ export default function Roster() {
     a.href = URL.createObjectURL(blob)
     a.download = 'kidchemy-roster.csv'
     a.click()
+    // The export carries every child's sticker code, so it is logged.
+    writeAudit('roster.export', 'class', classLabel(rows[0]?.student || {}), { count: rows.length })
     URL.revokeObjectURL(a.href)
   }
 

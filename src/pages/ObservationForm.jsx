@@ -47,6 +47,12 @@ import {
   FRAMEWORKS,
 } from '../data/pedagogy.js'
 import { classLabel } from '../data/roster.js'
+import {
+  SAFEGUARDING_NOTE,
+  safeHref,
+  safeguardingFlag,
+  sensitiveFlags,
+} from '../data/safety.js'
 
 const todayISO = () => new Date().toISOString().slice(0, 10)
 
@@ -188,12 +194,42 @@ export default function ObservationForm() {
       return [...prev, { subject: name, understanding: '', engagement: '', note: '', ...patch }]
     })
 
+  const allText = [
+    story.context,
+    story.saw,
+    story.meant,
+    story.next,
+    ...Object.values(tagNotes || {}),
+    ...subjects.map((x) => x.note),
+  ]
+  const flags = sensitiveFlags(...allText)
+  const worried = safeguardingFlag(...allText)
+  const badLink = artefactUrl.trim() && !safeHref(artefactUrl)
+
   const canSave = tags.length > 0 || dispositions.length > 0 || story.saw.trim().length > 0
 
   const submit = async () => {
     if (!canSave) {
       setToast({ message: 'Tap at least one thing, or write what you saw.', tone: 'warn' })
       return
+    }
+    if (badLink) {
+      setToast({ message: 'The artefact link must start with https://', tone: 'warn' })
+      return
+    }
+    let finalVisibility = visibility
+    if (worried) {
+      const ok = window.confirm(
+        `This reads like it could be a concern about the child's safety.\n\n${SAFEGUARDING_NOTE}\n\nIf it is not, press OK to save it as a school-only note.`
+      )
+      if (!ok) return
+      finalVisibility = 'school'
+    }
+    if (flags.length && finalVisibility === 'shared') {
+      const ok = window.confirm(
+        `This note mentions ${flags.map((f) => f.label).join(', ')}, and it is set to be shared with the family.\n\n${flags[0].advice}\n\nShare it anyway?`
+      )
+      if (!ok) return
     }
     const payload = {
       id: existing?.id,
@@ -206,7 +242,7 @@ export default function ObservationForm() {
       story,
       note: story.saw || null,
       milestone,
-      visibility,
+      visibility: finalVisibility,
       concentrationMinutes: concentration === '' ? null : Number(concentration),
       selfChosen,
       artefactUrl,
@@ -463,6 +499,17 @@ export default function ObservationForm() {
                 </button>
               ))}
             </div>
+            {flags.length > 0 && (
+              <Callout tone="warn" icon={AlertTriangle} className="mt-3" title="Sensitive detail">
+                This note mentions {flags.map((f) => f.label).join(', ')}.{' '}
+                {flags[0].advice}
+              </Callout>
+            )}
+            {worried && (
+              <Callout tone="alert" icon={AlertTriangle} className="mt-3" title="Is a child at risk?">
+                {SAFEGUARDING_NOTE}
+              </Callout>
+            )}
             {hasWatchTag && (
               <Callout tone="warn" icon={Info} className="mt-3">
                 You tapped a growth edge, so this was set to school only. You can

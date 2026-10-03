@@ -14,6 +14,7 @@ import {
 import { useStore } from '../../data/store.jsx'
 import { ptmSheet } from '../../data/derive.js'
 import { byRoll, classLabel } from '../../data/roster.js'
+import { writeAudit } from '../../data/supabase.js'
 
 /* ══════════════════════════════════════════════════════════════════
    Parent meeting sheets
@@ -161,7 +162,10 @@ export default function PtmSheets() {
       title="One page per child, before you sit down"
       subtitle="Generated from the taps you already made. Three things to praise with the evidence attached, one thing to raise, two questions to ask."
       actions={
-        <Button variant="primary" icon={Printer} onClick={() => window.print()}>
+        <Button variant="primary" icon={Printer} onClick={() => {
+          writeAudit('print.ptm_sheets', 'class', null, {})
+          window.print()
+        }}>
           Print {sheets.length} sheet{sheets.length === 1 ? '' : 's'}
         </Button>
       }
