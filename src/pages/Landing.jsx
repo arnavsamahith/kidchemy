@@ -230,15 +230,9 @@ function HeroTree() {
 
   return (
     <div ref={wrap} className="relative">
-      <div className="flex items-baseline justify-between gap-3 pr-2 lg:pl-10">
-        <p className="kl-label text-ink-faint">Meera · Class 3B · Term 1</p>
-        <p className="hidden text-xs text-ink-faint sm:block">
-          {active ? `${TREE.find((d) => d.id === active)?.label}: ${BANDS[bands[active]]}` : 'Every branch is something a teacher saw'}
-        </p>
-      </div>
       <svg
         viewBox="0 0 600 560"
-        className="h-auto w-full"
+        className="kl-hero-tree mx-auto h-auto w-full"
         role="img"
         aria-label="Meera's growth tree. Each branch is a strength. It grows when a teacher records seeing it."
       >
@@ -352,7 +346,7 @@ function HeroTree() {
       </svg>
 
       {/* The UI that makes it grow. Overlaps the tree on purpose. */}
-      <div className="kc-rise relative z-10 mt-2 lg:absolute lg:-left-24 lg:bottom-4 lg:mt-0 lg:w-[330px]" style={{ animationDelay: '1200ms' }}>
+      <div className="kc-rise relative z-10 mt-2 lg:absolute lg:-left-4 lg:bottom-2 lg:mt-0 lg:w-[310px] xl:-left-14" style={{ animationDelay: '1200ms' }}>
         <div className="kl-panel p-4 lg:-rotate-[1.5deg]">
           <div className="flex items-center justify-between">
             <p className="kl-label text-ink-faint">Class sweep</p>
@@ -446,7 +440,7 @@ function OneNumberStory() {
     return () => mq.removeEventListener?.('change', on)
   }, [])
 
-  const perGroup = mobile ? 4 : 7
+  const perGroup = mobile ? 3 : 5
   const chips = useMemo(() => {
     const out = []
     GROUPS.forEach((_, g) => {
@@ -464,6 +458,9 @@ function OneNumberStory() {
     let raf = 0
     let geo = null
 
+    // Random-looking, never overlapping: chips are dealt across rows like
+    // cards, each with a random gap and a little vertical drift that stays
+    // inside the gap between rows.
     const measure = () => {
       const w = fld.clientWidth
       const h = fld.clientHeight
@@ -472,6 +469,35 @@ function OneNumberStory() {
       const cw = w / cols
       const rh = h / rows
       fld.style.setProperty('--cw', `${cw}px`)
+
+      chipRefs.current.forEach((el) => el?.classList.remove('is-ordered'))
+      const sizes = chips.map((_, i) => {
+        const el = chipRefs.current[i]
+        return { w: el?.offsetWidth || 200, h: el?.offsetHeight || 28 }
+      })
+      const chipH = Math.max(...sizes.map((z) => z.h))
+      const gapY = mobile ? 10 : 16
+      const rowH = chipH + gapY
+      const nRows = Math.max(1, Math.floor((h + gapY) / rowH))
+      const lanes = Array.from({ length: nRows }, (_, r) => ({ x: seeded(r + 300) * 70, used: false }))
+      const deal = chips.map((_, i) => i).sort((a, b) => seeded(a + 7) - seeded(b + 7))
+      const spot = new Array(chips.length).fill(null)
+      let lane = 0
+      for (const i of deal) {
+        for (let t = 0; t < nRows; t++) {
+          const r = (lane + t) % nRows
+          const L = lanes[r]
+          const x = L.used ? L.x + 18 + seeded(i * 3 + 1) * (mobile ? 30 : 64) : L.x
+          if (x + sizes[i].w <= w) {
+            spot[i] = { x, y: r * rowH + seeded(i * 5 + 2) * gapY * 0.6 }
+            L.x = x + sizes[i].w
+            L.used = true
+            lane = (r + 1) % nRows
+            break
+          }
+        }
+      }
+
       geo = {
         w,
         h,
@@ -480,8 +506,9 @@ function OneNumberStory() {
           const col = c.g % cols
           const row = Math.floor(c.g / cols)
           return {
-            sx: seeded(i + 1) * (w - (mobile ? 150 : 210)),
-            sy: seeded(i + 101) * (h - 34),
+            sx: spot[i] ? spot[i].x : w / 2 - 40,
+            sy: spot[i] ? spot[i].y : h / 2 - 12,
+            hidden: !spot[i],
             ox: col * cw + 6,
             oy: row * rh + 30 + c.k * (mobile ? 25 : 27),
           }
@@ -514,7 +541,7 @@ function OneNumberStory() {
         const el = chipRefs.current[i]
         if (!el) return
         const g = geo.pos[i]
-        const shown = clamp01(appear * (n + 6) - i)
+        const shown = g.hidden ? order : clamp01(appear * (n + 6) - i)
         let x = lerp(g.sx, cx, collapse)
         let y = lerp(g.sy, cy, collapse)
         x = lerp(x, g.ox, order)
@@ -558,10 +585,10 @@ function OneNumberStory() {
   }, [chips, mobile, reduced])
 
   const captions = [
-    ['Every day, a teacher sees moments like these.', 'Forty children. Six hours. Hundreds of small things worth knowing.'],
-    ['At the end of term, all of them become this.', 'One number, on one sheet of paper.'],
-    ['Everything else disappears.', 'The child keeps the number. At home, in class, and in their own head.'],
-    ['Kidchemy keeps every moment.', 'And sorts them into who the child is, with a date and a name on each one.'],
+    ['Every day, a teacher sees moments like these.', 'Forty children. Hundreds of moments.'],
+    ['At the end of term, all of them become this.', 'One number. One sheet of paper.'],
+    ['Everything else disappears.', 'And the child keeps the number.'],
+    ['Kidchemy keeps every moment.', 'Sorted into who the child is.'],
   ]
 
   return (
@@ -616,48 +643,48 @@ const AUDIENCES = [
     id: 'schools',
     tab: 'School leaders',
     headline: 'The progress card, without the extra hour of writing.',
-    pain: 'NEP 2020 asks for a five-domain, multi-voice Holistic Progress Card for every child. Most schools have no tool for it, and their teachers are already stretched.',
+    pain: 'NEP asks for it. No tool exists for it.',
     gives: [
-      ['HPC-ready from day one', 'Every tap maps to the PARAKH domains and levels. The term card assembles itself.'],
-      ['Parent meetings that land', 'A one-page sheet per child: what to praise, what to raise, what to ask.'],
-      ['A school parents choose', 'Show prospective families a real portrait of a child. The school down the road shows a mark sheet.'],
-      ['Your data stays yours', 'You decide. We carry it out. No ads, no trackers, built around the DPDP Act.'],
+      ['HPC-ready from day one', 'Every tap mapped to PARAKH'],
+      ['Parent meetings that land', 'One sheet per child'],
+      ['A school parents choose', 'Portraits, not mark sheets'],
+      ['Your data stays yours', 'DPDP-aligned, no ads'],
     ],
   },
   {
     id: 'teachers',
     tab: 'Teachers',
     headline: 'Two minutes a week. For the whole class.',
-    pain: 'You notice extraordinary things about forty children every day. Then the parent meeting arrives, and all you have is marks and memory.',
+    pain: 'You see so much. Marks capture none of it.',
     gives: [
-      ['Taps, not essays', 'One prompt at a time. Tap the names it was true of. Done.'],
-      ['Your PTM, prepared', 'Print a sheet per child the evening before.'],
-      ['See who you haven’t seen', 'A nudge about the quiet child you have not noted in four weeks.'],
-      ['Concerns stay with you', 'Mark a note school-only and no parent ever sees it.'],
+      ['Taps, not essays', 'One prompt, tap the names'],
+      ['Your PTM, prepared', 'A sheet per child, printed'],
+      ['See who you haven’t seen', 'A nudge for the quiet child'],
+      ['Concerns stay with you', 'School-only, always'],
     ],
   },
   {
     id: 'parents',
     tab: 'Parents',
     headline: 'The first time someone describes your child instead of scoring them.',
-    pain: 'A percentage tells you where your child stands. It says nothing about who they are, or what to do at home this month.',
+    pain: 'A percentage says where. Never who.',
     gives: [
-      ['A portrait, not a scorecard', 'Who your child is and how they are growing, in two minutes on any phone.'],
-      ['Scan the report card', 'A code on the card you already get. No app to install.'],
-      ['What to try this month', 'Three specific things to do at home, and a question for dinner.'],
-      ['Yours to control', 'Download it, correct it, or erase it. Withdraw in one tap.'],
+      ['A portrait, not a scorecard', 'Two minutes, any phone'],
+      ['Scan the report card', 'No app to install'],
+      ['What to try this month', 'Three things for home'],
+      ['Yours to control', 'Download, correct, erase'],
     ],
   },
   {
     id: 'children',
     tab: 'Children',
     headline: 'To be seen, not sorted.',
-    pain: 'A child who scores 58% starts to believe they are 58%. Their curiosity, kindness and grit never make it onto the page.',
+    pain: 'A child who scores 58% starts to believe it.',
     gives: [
-      ['Strengths as things they do', '“Rebuilt the bridge until it held.” Never “weak student”.'],
-      ['No ranks, anywhere', 'Nothing places one child against another. Not on any screen or printout.'],
-      ['Their own voice', 'Self-reflection, as the HPC intends. What they are proud of, in their words.'],
-      ['No labels too early', 'No career predictions before Class 9.'],
+      ['Strengths as actions', '“Rebuilt it until it held”'],
+      ['No ranks, anywhere', 'No child against another'],
+      ['Their own voice', 'In their own words'],
+      ['No labels too early', 'No careers before Class 9'],
     ],
   },
 ]
@@ -832,14 +859,14 @@ function Audiences({ tab, setTab }) {
         <div key={aud.id} role="tabpanel" className="kc-tab-panel grid min-w-0 items-start gap-12 xl:grid-cols-[1.15fr_1fr]">
           <div>
             <h3 className="font-editorial text-[2.4rem] leading-[1.04] tracking-[-0.01em] text-ink sm:text-[3.2rem]">{aud.headline}</h3>
-            <p className="mt-6 max-w-xl text-lg leading-[1.75] text-ink-soft">{aud.pain}</p>
+            <p className="mt-5 max-w-xl font-editorial text-2xl italic leading-snug text-ink-soft">{aud.pain}</p>
             <ol className="mt-10 border-t border-neutral-200/70">
               {aud.gives.map(([t, b], i) => (
                 <li key={t} className="grid grid-cols-[2.5rem_1fr] gap-x-3 border-b border-neutral-200/70 py-4">
                   <span className="kc-tnum pt-0.5 text-xs text-ink-faint">0{i + 1}</span>
-                  <div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
                     <p className="font-semibold text-ink">{t}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-soft">{b}</p>
+                    <p className="text-sm text-ink-faint">{b}</p>
                   </div>
                 </li>
               ))}
@@ -930,7 +957,7 @@ function TrySweep() {
         </Reveal>
         <Reveal delay={100}>
           <p className="max-w-md text-lg leading-[1.75] text-ink-soft lg:ml-auto">
-            Three prompts. Tap every child each one was true of. Then see what a parent reads, built from your taps alone.
+            Three prompts. Your taps. A parent’s page.
           </p>
         </Reveal>
       </div>
@@ -954,13 +981,13 @@ function TrySweep() {
               <p className="font-editorial text-[2.2rem] leading-[1.05] text-ink sm:text-5xl">
                 That took you {fmt(elapsed)}.
               </p>
-              <p className="mt-4 max-w-md text-base leading-relaxed text-ink-soft">
-                You recorded <b className="font-semibold text-ink">{total} observations</b>, each dated and mapped to the Holistic Progress Card. A real class of forty takes about ninety seconds.
+              <p className="mt-4 max-w-md text-base text-ink-soft">
+                <b className="font-semibold text-ink">{total} observations</b>, dated and mapped to the HPC.
               </p>
               {unseen.length > 0 && (
-                <p className="mt-4 max-w-md text-sm leading-relaxed text-ink-soft">
-                  You didn&rsquo;t tap {unseen.slice(0, 3).join(', ')}
-                  {unseen.length > 3 ? ` and ${unseen.length - 3} others` : ''}. It is easy to miss the same quiet children week after week. Kidchemy tells you who, gently, before it becomes a pattern.
+                <p className="mt-2 max-w-md text-base text-ink-soft">
+                  Not seen: {unseen.slice(0, 3).join(', ')}
+                  {unseen.length > 3 ? ` +${unseen.length - 3}` : ''}. Kidchemy flags them.
                 </p>
               )}
               <button type="button" onClick={reset} className="kl-link mt-6 inline-flex items-center gap-1.5 text-sm">
@@ -986,7 +1013,7 @@ function TrySweep() {
               </div>
               <div className="mt-8 flex items-center justify-between gap-4 border-t border-neutral-200/70 pt-5">
                 <p className="text-sm text-ink-faint">
-                  {taps[step].length ? `${taps[step].length} tapped. Nobody else is marked down.` : 'Tap as many or as few as it was true of.'}
+                  {taps[step].length ? `${taps[step].length} tapped. No one marked down.` : 'Tap everyone it fits.'}
                 </p>
                 <button type="button" onClick={next} className="kl-btn kl-btn-dark px-5 py-2.5 text-sm">
                   {step === TRY_PROMPTS.length - 1 ? 'Finish' : 'Next prompt'}
@@ -1024,7 +1051,7 @@ function TrySweep() {
                 </div>
               </div>
               <p className="mt-6 text-sm leading-relaxed text-white/60">
-                {start ? (unseen.length ? `Not seen yet: ${unseen.slice(0, 4).join(', ')}${unseen.length > 4 ? '…' : ''}` : 'Every child seen. That almost never happens by accident.') : 'Nothing yet. Start tapping.'}
+                {start ? (unseen.length ? `Not seen yet: ${unseen.slice(0, 4).join(', ')}${unseen.length > 4 ? '…' : ''}` : 'Every child seen.') : 'Start tapping.'}
               </p>
             </>
           ) : (
@@ -1051,13 +1078,11 @@ function TrySweep() {
                   </ul>
                 ) : (
                   <p className="mt-4 text-sm leading-relaxed text-ink-soft">
-                    Not enough seen yet. The page says so plainly, rather than guessing.
+                    Not enough seen yet. No guessing.
                   </p>
                 )}
               </div>
-              <p className="mt-5 text-sm leading-relaxed text-white/60">
-                Every sentence traces back to a tap. Nothing is invented, and nothing is shared that the teacher kept school-only.
-              </p>
+              <p className="mt-5 text-sm text-white/60">Every line traces to a tap.</p>
             </div>
           )}
         </div>
@@ -1209,21 +1234,21 @@ function HpcWheel() {
             ))
           ) : (
             <p className="border-b border-white/15 py-4 font-editorial text-[1.45rem] leading-snug text-white/70">
-              Not observed yet this term. The card says so, rather than guessing.
+              Not observed yet. No guessing.
             </p>
           )}
         </div>
-        <p className="mt-5 text-sm text-white/60">This is what sits behind every line on the card. Click any part of the wheel.</p>
+        <p className="mt-5 text-sm text-white/60">Click the wheel. See the proof.</p>
       </div>
     </div>
   )
 }
 
 const PROOFS = [
-  ['Nothing is invented.', 'Every sentence traces to a counted, dated observation. Ask why it says something and there is an answer.'],
-  ['It measures its own bias.', 'Records built on visible behaviour under-describe quiet children. Kidchemy shows teachers where their attention lands.'],
-  ['Teachers can withhold.', 'Every note is shared or school-only. Concerns default to staff, so they keep being recorded honestly.'],
-  ['Thin means thin.', 'If a child has only been seen a little, the page says so. No padding, no horoscope.'],
+  ['Nothing is invented.', 'Every line has a date and a teacher.'],
+  ['It measures its own bias.', 'Quiet children get flagged, not forgotten.'],
+  ['Teachers can withhold.', 'Concerns stay with staff.'],
+  ['Thin means thin.', 'Little seen, little said.'],
 ]
 
 function useScrollVar(ref) {
@@ -1263,7 +1288,7 @@ function HpcAndProof() {
               Built for the progress card. <em className="text-white/70">Built to be believed.</em>
             </h2>
             <p className="max-w-md text-lg leading-[1.75] text-white/75 lg:ml-auto">
-              NEP 2020&rsquo;s Holistic Progress Card asks for five domains, the child&rsquo;s own voice, and levels instead of marks. Kidchemy maps every tap to it, from KG to Class 8.
+              Five domains. Levels, not marks. KG to Class 8.
             </p>
           </div>
 
@@ -1273,7 +1298,7 @@ function HpcAndProof() {
 
           <div className="mt-28 grid gap-12 border-t border-white/15 pt-14 lg:grid-cols-[0.8fr_1.6fr]">
             <p className="font-editorial text-4xl leading-[1.05]">
-              Most products like this become a horoscope. Four decisions keep this one honest.
+              Four rules that keep it honest.
             </p>
             <ol className="grid gap-x-12 sm:grid-cols-2">
               {PROOFS.map(([t, b], i) => (
@@ -1294,9 +1319,7 @@ function HpcAndProof() {
                 </span>
               ))}
             </div>
-            <p className="max-w-md text-sm leading-relaxed text-white/60">
-              What we refused matters too. Learning styles are not supported by evidence, so no child is ever called a visual learner. And no careers are named below Class 9.
-            </p>
+            <p className="max-w-md text-sm text-white/60">No learning-style labels. No careers before Class 9.</p>
           </div>
         </div>
       </div>
@@ -1340,9 +1363,7 @@ function Letter() {
             <h2 className="mt-4 font-editorial text-5xl leading-[0.98] tracking-[-0.015em] text-ink sm:text-6xl">
               Not a dashboard. <em>A letter.</em>
             </h2>
-            <p className="mt-6 max-w-sm text-lg leading-[1.75] text-ink-soft">
-              Plain language, two minutes on any phone. Turn on the sources and see where each line came from.
-            </p>
+            <p className="mt-6 max-w-sm text-lg text-ink-soft">Plain words. Every line sourced.</p>
           </Reveal>
           <button
             type="button"
@@ -1437,21 +1458,21 @@ const DATA_ITEMS = [
   'Who opened the record, and when',
 ]
 const VIEWERS = [
-  { id: 'parent', label: 'Meera’s parent', sees: [0, 3], why: 'Only after linking with the sticker code and Meera’s first name, and agreeing to each purpose.' },
-  { id: 'teacher', label: 'Meera’s teacher', sees: [0, 1, 2, 3], why: 'Teachers see children in their own school. They can edit only the notes they wrote.' },
-  { id: 'other', label: 'A teacher at another school', sees: [], why: 'The database refuses. Not hidden by the screen: refused at the row.' },
-  { id: 'admin', label: 'The school’s admin', sees: [0, 1, 2, 3, 4], why: 'Needs two-step sign-in. Every staff view, print and export is in the access log.' },
-  { id: 'stranger', label: 'Another parent', sees: [], why: 'A guessed code is not enough. Five wrong tries and linking pauses for an hour.' },
-  { id: 'ads', label: 'Advertisers, anyone else', sees: [], why: 'No ads, no trackers, no selling. Not now, not later.' },
+  { id: 'parent', label: 'Meera’s parent', sees: [0, 3], why: 'Sticker code, first name, and consent.' },
+  { id: 'teacher', label: 'Meera’s teacher', sees: [0, 1, 2, 3], why: 'Own school only. Own notes only.' },
+  { id: 'other', label: 'A teacher at another school', sees: [], why: 'Refused by the database.' },
+  { id: 'admin', label: 'The school’s admin', sees: [0, 1, 2, 3, 4], why: 'Two-step sign-in. Every view logged.' },
+  { id: 'stranger', label: 'Another parent', sees: [], why: 'Five wrong tries, then locked.' },
+  { id: 'ads', label: 'Advertisers, anyone else', sees: [], why: 'Never.' },
 ]
 
 const PROMISES = [
-  ['Consent comes first.', 'Item by item, nothing pre-ticked, recorded against the notice the parent saw. Withdrawing takes one tap.'],
-  ['The school decides.', 'Under the DPDP Act the school is in charge of its data. Kidchemy only carries out its instructions.'],
-  ['See it, fix it, erase it.', 'Parents download, correct or erase from their home page, and get a reply within 30 days.'],
-  ['Locked at the database.', 'Row-level rules, encryption in transit and at rest, two-step sign-in for admins, auto sign-out on shared laptops.'],
-  ['Guard rails for teachers.', 'Notes that mention health, caste, religion or family life are flagged before they can be shared. Safety concerns go to the school’s safeguarding lead, not into an app.'],
-  ['A plan for bad days.', 'If data is ever exposed, families hear without delay and the Data Protection Board within 72 hours.'],
+  ['Consent first.', 'Item by item. Withdraw in one tap.'],
+  ['The school decides.', 'DPDP Act: school owns, we process.'],
+  ['See it, fix it, erase it.', 'From the parent’s home page.'],
+  ['Locked at the database.', 'Encrypted. Row-level rules. Two-step admin.'],
+  ['Guard rails for teachers.', 'Sensitive notes flagged before sharing.'],
+  ['A plan for bad days.', 'Families told fast. Board within 72 hours.'],
 ]
 
 function Safety() {
@@ -1469,7 +1490,7 @@ function Safety() {
           </Reveal>
           <Reveal delay={100}>
             <p className="max-w-md text-lg leading-[1.75] text-ink-soft lg:ml-auto">
-              Pick a person. See exactly what they can open about Meera. These are the rules the database enforces, not settings on a screen.
+              Pick a person. See what they can open.
             </p>
           </Reveal>
         </div>
@@ -1555,15 +1576,10 @@ function About() {
               Every child deserves to be <em>described,</em> not just measured.
             </h2>
           </Reveal>
-          <Reveal delay={80} className="mt-10 max-w-2xl space-y-6 text-lg leading-[1.8] text-ink-soft">
-            <p>
-              {FOUNDER.college ? `I'm a student at ${FOUNDER.college}. ` : ''}
-              Like most of us, I grew up in a system that folds a whole year of a child&rsquo;s life into one number on one sheet of paper. That number decides how a child is spoken about at school, at the dinner table, and eventually in their own head.
-            </p>
-            <p>
-              But teachers see so much more. The child who asks the question no one else thought of. The one who quietly helps a friend catch up. The one who rebuilds the model five times. None of it has anywhere to go, so it disappears.{' '}
-              <span className="text-ink">Kidchemy gives it somewhere to go.</span>
-            </p>
+          <Reveal delay={80} className="mt-10 max-w-2xl space-y-3 text-xl leading-snug text-ink-soft">
+            <p>A whole year of a child, folded into one number.</p>
+            <p>Teachers see far more. It has nowhere to go.</p>
+            <p className="text-ink">Kidchemy gives it somewhere to go.</p>
           </Reveal>
 
           <Reveal delay={140}>
@@ -1574,9 +1590,9 @@ function About() {
 
           <ol className="mt-14 max-w-2xl">
             {[
-              ['Now', 'Two pilot schools this term, working side by side with their teachers.'],
-              ['Next', 'Every Holistic Progress Card written from evidence, not from memory the night before.'],
-              ['Always', 'Free for parents. No ads. Children’s data stays with their school.'],
+              ['Now', 'Two pilot schools, side by side with teachers'],
+              ['Next', 'Every progress card written from evidence'],
+              ['Always', 'Free for parents. No ads.'],
             ].map(([k, v], i) => (
               <Reveal as="li" key={k} delay={180 + i * 80} className="relative grid grid-cols-[5.5rem_1fr] gap-4 border-t border-neutral-200/70 py-4">
                 <span className="kl-label pt-1 text-accent">{k}</span>
@@ -1611,17 +1627,15 @@ const NAV = [
   ['Parents', 'parents'],
 ]
 
+const FLOW = [
+  ['Teachers observe', 'a few taps a week'],
+  ['Kidchemy builds profile', 'every tap, dated'],
+  ['Parents see the child', 'HPC and a parent page'],
+]
+
 export default function Landing() {
   useReveal()
   const [tab, setTab] = useState('schools')
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 12)
-    on()
-    window.addEventListener('scroll', on, { passive: true })
-    return () => window.removeEventListener('scroll', on)
-  }, [])
 
   const goTab = (id) => {
     setTab(id)
@@ -1630,14 +1644,14 @@ export default function Landing() {
 
   return (
     <div className="kl min-h-dvh overflow-x-clip bg-paper font-satoshi text-ink">
-      {/* ── Nav ─────────────────────────────────────────────── */}
-      <header className={cx('sticky top-0 z-40 transition-[background-color,border-color] duration-200', scrolled ? 'border-b border-neutral-200/70 bg-paper/85 backdrop-blur' : 'border-b border-transparent')}>
-        <div className="mx-auto flex max-w-[88rem] items-center justify-between gap-4 px-5 py-3.5 md:px-10">
+      {/* ── Nav: the logo's teal ─────────────────────────────── */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-accent text-white">
+        <div className="mx-auto flex h-16 max-w-[88rem] items-center justify-between gap-4 px-5 md:px-10">
           <Link to="/" className="flex items-center gap-2" aria-label="Kidchemy home">
-            <Mark size={28} tone="bare" />
-            <span className="font-editorial text-2xl tracking-[-0.01em] text-ink">Kidchemy</span>
+            <Mark size={28} tone="white" />
+            <span className="text-xl font-bold tracking-[-0.03em]">Kidchemy</span>
           </Link>
-          <nav className="hidden items-center gap-7 text-sm text-ink-soft lg:flex">
+          <nav className="hidden items-center gap-7 text-sm text-white/75 lg:flex">
             {NAV.map(([l, id]) => (
               <button key={id} type="button" onClick={() => goTab(id)} className="kl-nav">
                 {l}
@@ -1647,68 +1661,54 @@ export default function Landing() {
             <a href="#about" className="kl-nav">About</a>
           </nav>
           <div className="flex items-center gap-4">
-            <Link to="/login" className="kl-nav text-sm text-ink-soft">
+            <Link to="/login" className="kl-nav text-sm text-white/75">
               Sign in
             </Link>
-            <PilotButton />
+            <PilotButton light />
           </div>
         </div>
       </header>
 
-      {/* ── Hero ────────────────────────────────────────────── */}
-      <section className="mx-auto grid max-w-[88rem] gap-10 px-5 pb-28 pt-14 md:px-10 lg:grid-cols-12 lg:gap-0 lg:pb-36 lg:pt-20">
-        <div className="relative z-10 lg:col-start-1 lg:col-end-8 lg:row-start-1 lg:pt-10">
-          <h1 className="font-editorial text-[3.6rem] leading-[0.9] tracking-[-0.025em] text-ink sm:text-[5.6rem] lg:text-[6.6rem] xl:text-[7.6rem]">
+      {/* ── Hero: fits one screen ──────────────────────────────── */}
+      <section className="kl-hero mx-auto grid max-w-[88rem] gap-10 px-5 pb-20 pt-10 md:px-10 lg:grid-cols-12 lg:items-center lg:gap-0 lg:py-0">
+        <div className="relative z-10 lg:col-start-1 lg:col-end-8 lg:row-start-1">
+          <h1 className="kl-hero-h font-satoshi font-bold text-ink">
             <span className="kc-line">
               <span style={{ animationDelay: '120ms' }}>Marks say</span>
             </span>
             <span className="kc-line">
-              <span style={{ animationDelay: '240ms' }}>how much.</span>
+              <span style={{ animationDelay: '220ms' }}>how much.</span>
             </span>
             <span className="kc-line">
-              <span style={{ animationDelay: '420ms' }}>
-                We show <em className="text-accent">who.</em>
+              <span style={{ animationDelay: '360ms' }}>
+                We show <span className="text-accent">who.</span>
               </span>
             </span>
           </h1>
-          <p className="kc-rise mt-10 max-w-[30rem] text-lg leading-[1.75] text-ink-soft sm:text-xl" style={{ animationDelay: '700ms' }}>
-            Teachers tap what they notice, two minutes a week. Every child gets a portrait their parents can read, and the school gets its Holistic Progress Card.
+          <p className="kc-rise mt-6 max-w-[27rem] text-xl leading-snug text-ink-soft sm:text-2xl" style={{ animationDelay: '600ms' }}>
+            Everyday teacher observations, turned into a living profile of every child.
           </p>
-          <div className="kc-rise mt-10 flex flex-wrap items-center gap-6" style={{ animationDelay: '850ms' }}>
+          <div className="kc-rise mt-8 flex flex-wrap items-center gap-6" style={{ animationDelay: '750ms' }}>
             <PilotButton size="lg" />
             <a href="#try" className="kl-link text-base">
               Try being the teacher
             </a>
           </div>
-          <dl className="kc-rise mt-16 flex max-w-lg flex-wrap gap-x-10 gap-y-4 border-t border-neutral-200/70 pt-5" style={{ animationDelay: '1000ms' }}>
-            {[
-              ['2 min', 'a week, per class'],
-              ['0', 'essays for teachers'],
-              ['No app', 'for parents'],
-            ].map(([n, l]) => (
-              <div key={l}>
-                <dt className="font-editorial text-3xl text-ink">{n}</dt>
-                <dd className="text-xs text-ink-faint">{l}</dd>
-              </div>
+          <ol className="kc-rise mt-10 grid max-w-[34rem] grid-cols-3 border-t border-neutral-200/70 pt-4" style={{ animationDelay: '900ms' }} aria-label="How it works">
+            {FLOW.map(([t, sub], i) => (
+              <li key={t} className="relative pr-4">
+                <span className="kc-tnum text-xs text-accent">0{i + 1}</span>
+                <p className="mt-1 text-sm font-semibold leading-snug text-ink">{t}</p>
+                <p className="text-xs text-ink-faint">{sub}</p>
+
+              </li>
             ))}
-          </dl>
+          </ol>
         </div>
-        <div className="relative lg:col-start-7 lg:col-end-13 lg:row-start-1 lg:-mt-6 xl:-mr-8">
+        <div className="relative lg:col-start-7 lg:col-end-13 lg:row-start-1 xl:-mr-8">
           <HeroTree />
         </div>
       </section>
-
-      {/* ── Marquee ─────────────────────────────────────────── */}
-      <div className="overflow-hidden border-y border-neutral-200/70 py-5" aria-hidden="true">
-        <div className="kc-marquee">
-          {[...MOMENTS.slice(0, 12), ...MOMENTS.slice(0, 12)].map(([m], i) => (
-            <span key={i} className="flex items-center gap-8 whitespace-nowrap px-4 font-editorial text-2xl italic text-ink-soft sm:text-3xl">
-              {m.charAt(0).toUpperCase() + m.slice(1)}
-              <span className="h-1.5 w-1.5 rounded-full bg-accent not-italic" />
-            </span>
-          ))}
-        </div>
-      </div>
 
       <OneNumberStory />
       <Audiences tab={tab} setTab={setTab} />
@@ -1732,7 +1732,7 @@ export default function Landing() {
           <div className="mt-20 flex flex-wrap items-center justify-between gap-6 border-t border-white/10 pt-6">
             <div className="flex items-center gap-2.5">
               <Mark size={28} tone="light" />
-              <span className="font-editorial text-xl">Kidchemy</span>
+              <span className="text-lg font-bold tracking-[-0.03em]">Kidchemy</span>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/65">
               {NAV.map(([l, id]) => (
@@ -1746,10 +1746,7 @@ export default function Landing() {
               <Link to="/login" className="transition-colors duration-200 hover:text-white">Sign in</Link>
             </div>
           </div>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-white/45">
-            <p>Children&rsquo;s data stays with the school. No advertising, no trackers, ever.</p>
-            <p>© {new Date().getFullYear()} Kidchemy</p>
-          </div>
+          <p className="mt-6 text-xs text-white/45">No advertising, no trackers, ever.</p>
         </div>
       </footer>
     </div>

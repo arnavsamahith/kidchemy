@@ -340,7 +340,7 @@ export default function AdminPeople() {
               onChange={(e) =>
                 setCodeForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))
               }
-              placeholder="VIDYA-7C"
+              placeholder="SCHOOL-7C"
               className="kc-tnum tracking-wider"
             />
           </Field>

@@ -16,7 +16,7 @@
 --   - audit_log, because this is children's data and someone will ask.
 --
 -- CLEAN SLATE: the v2 demo students (Aryan, Priya) and their observations
--- are removed, and the Grade 7C roster from dump/ is imported in their place.
+-- are removed. Rosters are imported from the app, never seeded from git.
 -- ════════════════════════════════════════════════════════════════════
 
 -- ─── 1. Tables ──────────────────────────────────────────────────────
@@ -463,37 +463,17 @@ create policy "codes admin" on teacher_codes
 delete from students where id in ('aryan-mehta', 'priya-sharma', 'rohan-gupta',
                                   'ananya-nair', 'kabir-singh');
 
-insert into teacher_codes (code, school, class_name, grade, section) values
-  ('VIDYA-7C', 'Vidya Vihar Public School', 'Grade 7C', 7, 'C')
-on conflict (code) do update
-  set grade = excluded.grade, section = excluded.section,
-      class_name = excluded.class_name;
+-- Teacher codes are minted at /admin/people with an expiry and a use
+-- limit. None is seeded here, because this file lives in git.
 
 insert into schools (id, name, city, class_name, teacher) values
   ('vidya-vihar', 'Vidya Vihar Public School', 'Chennai', 'Grade 7C', 'Ms. Rekha Iyer')
 on conflict (id) do nothing;
 
-insert into students
-  (id, name, student_code, grade, section, roll_no, class_name, school, frequency, access_code)
-values
-  ('s_2019m01', 'Aarav Sharma', '2019M01', 7, 'C', 1, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'C3QH-EAX4'),
-  ('s_2019f02', 'Ananya Iyer', '2019F02', 7, 'C', 2, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'W3XT-DH4D'),
-  ('s_2021m03', 'Devansh Patel', '2021M03', 7, 'C', 3, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'TRV4-WC3W'),
-  ('s_2019f04', 'Diya Verma', '2019F04', 7, 'C', 4, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'DM4V-TCRU'),
-  ('s_2019m05', 'Ishaan Gupta', '2019M05', 7, 'C', 5, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'ETRD-FJFW'),
-  ('s_2019f06', 'Kavya Nair', '2019F06', 7, 'C', 6, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'EJJM-G7M7'),
-  ('s_2022m07', 'Rohan Mehta', '2022M07', 7, 'C', 7, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'FEG4-JURE'),
-  ('s_2019f08', 'Sanjana Rao', '2019F08', 7, 'C', 8, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'KMCC-M47J'),
-  ('s_2019m09', 'Siddharth Reddi', '2019M09', 7, 'C', 9, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'QRDF-FG9W'),
-  ('s_2019f10', 'Tanvi Joshi', '2019F10', 7, 'C', 10, 'Grade 7C', 'Vidya Vihar Public School', 'Weekly', 'DH3Q-QDDH')
-on conflict (id) do update set
-  name        = excluded.name,
-  student_code= excluded.student_code,
-  grade       = excluded.grade,
-  section     = excluded.section,
-  roll_no     = excluded.roll_no,
-  class_name  = excluded.class_name,
-  school      = excluded.school;
+-- Children's data never goes in this file: it is in git. Import the roster
+-- from /teacher/roster (paste the school's CSV export). Rows imported by
+-- earlier versions of this file stay in the database untouched; rotate their
+-- access codes with section 9 of security.sql.
 
 -- ─── 6. Default settings ────────────────────────────────────────────
 

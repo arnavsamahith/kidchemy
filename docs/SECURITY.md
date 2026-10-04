@@ -55,6 +55,8 @@ admin aal1 vs aal2.
 
 ## 3. Launch checklist (do before the first school)
 
+The full, step-by-step version with dashboard paths is **docs/PILOT-READINESS.md**.
+
 **Database**
 - [ ] Run `supabase/schema.sql`, then `supabase/security.sql`. Always in that order.
 - [ ] Run section 9 of security.sql once: rotate every access code, replace `VIDYA-7C`.
